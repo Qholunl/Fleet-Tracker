@@ -1,17 +1,21 @@
 <?php
 require 'config.php';
-$input = json_decode(file_get_contents('php://input'), true);
+
+$input = getInput();
 if (!$input || !isset($input['id'])) {
-    http_response_code(400);
-    echo json_encode(['error' => 'Invalid data']);
-    exit;
+    sendJson(['error' => 'Invalid data'], 400);
 }
 
-$id = (int)$input['id'];
+$id = (int) $input['id'];
+
 $stmt = $pdo->prepare("DELETE FROM geofences WHERE id = ?");
 if ($stmt->execute([$id])) {
-    echo json_encode(['status' => 'deleted']);
+    if ($stmt->rowCount() > 0) {
+        sendJson(['status' => 'deleted']);
+    } else {
+        sendJson(['error' => 'Geofence not found'], 404);
+    }
 } else {
-    echo json_encode(['error' => 'Gagal menghapus']);
+    sendJson(['error' => 'Delete failed'], 500);
 }
 ?>
