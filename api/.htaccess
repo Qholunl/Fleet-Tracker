@@ -1,11 +1,26 @@
 # api/.htaccess
 <IfModule mod_headers.c>
+    # Izinkan akses dari semua origin (bisa diganti dengan domain spesifik)
     Header set Access-Control-Allow-Origin "*"
-    Header set Access-Control-Allow-Methods "GET, POST, DELETE, OPTIONS"
-    Header set Access-Control-Allow-Headers "Content-Type, Authorization"
+    # Izinkan metode HTTP yang diperlukan
+    Header set Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
+    # Izinkan header khusus
+    Header set Access-Control-Allow-Headers "Content-Type, Authorization, X-Requested-With"
+    # Izinkan kirim kredensial (jika diperlukan)
+    # Header set Access-Control-Allow-Credentials "true"
+    # Cache preflight request selama 1 jam (3600 detik)
+    Header set Access-Control-Max-Age "3600"
 </IfModule>
 
 <IfModule mod_rewrite.c>
     RewriteEngine On
-    # Jika perlu routing tambahan
+    # Jika ada permintaan OPTIONS, langsung tanggapi dengan 200 OK tanpa melanjutkan
+    RewriteCond %{REQUEST_METHOD} OPTIONS
+    RewriteRule ^(.*)$ $1 [R=200,L]
+    
+    # Jika perlu routing tambahan, tambahkan di sini
+    # Contoh: RewriteRule ^(.*)$ index.php [QSA,L]
 </IfModule>
+
+# Opsional: nonaktifkan tampilan direktori
+Options -Indexes
