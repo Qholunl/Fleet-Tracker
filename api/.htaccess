@@ -1,26 +1,32 @@
-# api/.htaccess
 <IfModule mod_headers.c>
-    # Izinkan akses dari semua origin (bisa diganti dengan domain spesifik)
+    # Izinkan akses dari mana saja (untuk frontend di Netlify)
     Header set Access-Control-Allow-Origin "*"
-    # Izinkan metode HTTP yang diperlukan
-    Header set Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
-    # Izinkan header khusus
+    # Metode yang didukung (tambahkan OPTIONS untuk preflight)
+    Header set Access-Control-Allow-Methods "GET, POST, OPTIONS"
+    # Header yang diizinkan dalam request
     Header set Access-Control-Allow-Headers "Content-Type, Authorization, X-Requested-With"
-    # Izinkan kirim kredensial (jika diperlukan)
-    # Header set Access-Control-Allow-Credentials "true"
-    # Cache preflight request selama 1 jam (3600 detik)
-    Header set Access-Control-Max-Age "3600"
+    # Cache preflight request selama 1 hari agar tidak terlalu sering
+    Header set Access-Control-Max-Age "86400"
 </IfModule>
 
 <IfModule mod_rewrite.c>
     RewriteEngine On
-    # Jika ada permintaan OPTIONS, langsung tanggapi dengan 200 OK tanpa melanjutkan
+
+    # ================================================================
+    # 1. TANGANI PREFLIGHT (OPTIONS)
+    # ================================================================
+    # Setiap request OPTIONS akan langsung dikembalikan dengan status 200 OK
+    # Ini penting agar browser (frontend Netlify) tidak error CORS.
     RewriteCond %{REQUEST_METHOD} OPTIONS
     RewriteRule ^(.*)$ $1 [R=200,L]
-    
-    # Jika perlu routing tambahan, tambahkan di sini
-    # Contoh: RewriteRule ^(.*)$ index.php [QSA,L]
-</IfModule>
 
-# Opsional: nonaktifkan tampilan direktori
-Options -Indexes
+    # ================================================================
+    # 2. ROUTING KE API.PHP
+    # ================================================================
+    # Jika file/folder tidak ada, semua request akan diarahkan ke api.php
+    # Contoh: /api/login   → /api/api.php  (agar bisa diproses oleh $method)
+    # Contoh: /api/device  → /api/api.php
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^(.*)$ api.php [QSA,L]
+</IfModule>
