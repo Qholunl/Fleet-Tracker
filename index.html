@@ -1,0 +1,759 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Fleet Tracker Login</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Supabase Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            position: relative;
+            padding: 20px;
+        }
+        .fullscreen-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            font-size: 1.2rem;
+            z-index: 1000;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+        .fullscreen-btn:hover {
+            background: rgba(255, 255, 255, 0.4);
+            transform: scale(1.1);
+        }
+        .fullscreen-btn:active {
+            transform: scale(0.95);
+        }
+        .auth-container {
+            width: 100%;
+            max-width: 1200px;
+            padding: 10px;
+        }
+        .auth-card {
+            background: white;
+            border-radius: 24px;
+            overflow: hidden;
+            display: flex;
+            flex-wrap: wrap;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+        .auth-left {
+            flex: 1;
+            min-width: 280px;
+            padding: 50px 40px;
+            color: white;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        .auth-left h1 {
+            font-size: 2.5rem;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .auth-left h1 i {
+            color: #667eea;
+        }
+        .auth-left p {
+            opacity: 0.85;
+            line-height: 1.7;
+            font-size: 1.05rem;
+        }
+        .features {
+            margin-top: 35px;
+        }
+        .feature-item {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            margin-bottom: 18px;
+            font-size: 0.95rem;
+        }
+        .feature-item i {
+            width: 26px;
+            color: #667eea;
+            font-size: 1.1rem;
+            text-align: center;
+        }
+        .auth-right {
+            flex: 1;
+            min-width: 300px;
+            padding: 50px 45px;
+            background: white;
+        }
+        .auth-tabs {
+            display: flex;
+            gap: 24px;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #eee;
+        }
+        .auth-tab {
+            padding: 12px 0 10px;
+            cursor: pointer;
+            font-weight: 600;
+            color: #888;
+            border-bottom: 3px solid transparent;
+            transition: 0.25s ease;
+            font-size: 1rem;
+            user-select: none;
+        }
+        .auth-tab.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+        }
+        .auth-tab:hover {
+            color: #667eea;
+        }
+        .auth-form {
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+        .auth-form.active {
+            display: block;
+        }
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        .form-group {
+            margin-bottom: 20px;
+            position: relative;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #333;
+            font-size: 0.9rem;
+        }
+        .form-group label i {
+            color: #667eea;
+            margin-right: 6px;
+        }
+        .form-group .input-icon {
+            position: absolute;
+            left: 14px;
+            top: 42px;
+            color: #aaa;
+            font-size: 0.95rem;
+            transition: color 0.2s;
+        }
+        .form-group input:focus+.input-icon,
+        .form-group input:focus~.input-icon {
+            color: #667eea;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 14px 14px 14px 44px;
+            border-radius: 12px;
+            border: 2px solid #e8e8e8;
+            outline: none;
+            font-size: 1rem;
+            transition: 0.25s ease;
+            background: #f8f9fa;
+            color: #1a1a2e;
+        }
+        .form-group input:focus {
+            border-color: #667eea;
+            background: #fff;
+            box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.12);
+        }
+        .form-group input::placeholder {
+            color: #aaa;
+        }
+        .btn-auth {
+            width: 100%;
+            padding: 15px;
+            border: none;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.25s ease;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            margin-top: 4px;
+        }
+        .btn-auth:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 30px rgba(102, 126, 234, 0.35);
+        }
+        .btn-auth:active {
+            transform: scale(0.98);
+        }
+        .btn-auth:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+        .btn-auth .spinner {
+            display: none;
+            width: 22px;
+            height: 22px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+        }
+        .btn-auth.loading .spinner {
+            display: block;
+        }
+        .btn-auth.loading .btn-text {
+            display: none;
+        }
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+        .error-message,
+        .success-message {
+            display: none;
+            padding: 14px 18px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            border-left: 4px solid;
+            animation: fadeIn 0.3s ease;
+        }
+        .error-message {
+            background: #ffe9e9;
+            color: #c0392b;
+            border-color: #c0392b;
+        }
+        .success-message {
+            background: #e9ffe9;
+            color: #27ae60;
+            border-color: #27ae60;
+        }
+        .form-footer {
+            margin-top: 18px;
+            text-align: center;
+            font-size: 0.85rem;
+            color: #999;
+        }
+        .form-footer a {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 600;
+        }
+        .form-footer a:hover {
+            text-decoration: underline;
+        }
+        .badge-version {
+            position: fixed;
+            bottom: 16px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: rgba(255, 255, 255, 0.6);
+            padding: 6px 16px;
+            border-radius: 40px;
+            font-size: 0.7rem;
+            letter-spacing: 0.3px;
+            z-index: 999;
+        }
+
+        @media (max-width: 768px) {
+            .auth-card {
+                flex-direction: column;
+                border-radius: 20px;
+            }
+            .auth-left {
+                padding: 35px 28px;
+                min-width: unset;
+            }
+            .auth-left h1 {
+                font-size: 1.8rem;
+            }
+            .auth-left p {
+                font-size: 0.95rem;
+            }
+            .auth-right {
+                padding: 32px 24px;
+                min-width: unset;
+            }
+            .feature-item {
+                font-size: 0.85rem;
+            }
+            .fullscreen-btn {
+                top: 14px;
+                right: 14px;
+                width: 40px;
+                height: 40px;
+                font-size: 1rem;
+            }
+            .auth-tabs {
+                gap: 16px;
+            }
+            .auth-tab {
+                font-size: 0.9rem;
+                padding: 10px 0 8px;
+            }
+        }
+        @media (max-width: 400px) {
+            .auth-left {
+                padding: 24px 18px;
+            }
+            .auth-left h1 {
+                font-size: 1.5rem;
+            }
+            .auth-right {
+                padding: 24px 16px;
+            }
+            .form-group input {
+                padding: 12px 12px 12px 40px;
+                font-size: 0.9rem;
+            }
+            .btn-auth {
+                padding: 13px;
+                font-size: 0.9rem;
+            }
+            .fullscreen-btn {
+                top: 10px;
+                right: 10px;
+                width: 36px;
+                height: 36px;
+                font-size: 0.9rem;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- TOMBOL FULLSCREEN -->
+    <button class="fullscreen-btn" id="fullscreenToggle" title="Toggle Fullscreen" aria-label="Toggle fullscreen">
+        <i class="fas fa-expand" id="fullscreenIcon"></i>
+    </button>
+
+    <div class="auth-container">
+        <div class="auth-card">
+            <div class="auth-left">
+                <h1><i class="fas fa-map-marker-alt"></i> Fleet Tracker</h1>
+                <p>Monitoring GPS realtime, geofencing, telemetry, dan kontrol kendaraan berbasis IoT.</p>
+                <div class="features">
+                    <div class="feature-item"><i class="fas fa-satellite-dish"></i><span>Realtime GPS Tracking</span></div>
+                    <div class="feature-item"><i class="fas fa-draw-polygon"></i><span>Geofencing Smart Alert</span></div>
+                    <div class="feature-item"><i class="fas fa-chart-line"></i><span>Realtime Telemetry</span></div>
+                    <div class="feature-item"><i class="fas fa-history"></i><span>Travel History Playback</span></div>
+                </div>
+            </div>
+            <div class="auth-right">
+                <div class="auth-tabs">
+                    <div class="auth-tab active" data-tab="login" role="button" tabindex="0">Login</div>
+                    <div class="auth-tab" data-tab="register" role="button" tabindex="0">Register</div>
+                </div>
+                <div id="errorMsg" class="error-message"></div>
+                <div id="successMsg" class="success-message"></div>
+
+                <!-- LOGIN -->
+                <div id="loginForm" class="auth-form active">
+                    <form id="loginFormElement" autocomplete="off" novalidate>
+                        <div class="form-group">
+                            <label><i class="fas fa-envelope"></i> Email</label>
+                            <i class="fas fa-envelope input-icon"></i>
+                            <input type="email" id="loginEmail" placeholder="Masukkan email Anda" required>
+                        </div>
+                        <div class="form-group">
+                            <label><i class="fas fa-lock"></i> Password</label>
+                            <i class="fas fa-lock input-icon"></i>
+                            <input type="password" id="loginPassword" placeholder="Masukkan password" required minlength="6">
+                        </div>
+                        <button type="submit" class="btn-auth" id="loginBtn">
+                            <span class="spinner"></span>
+                            <span class="btn-text"><i class="fas fa-sign-in-alt"></i> Login Dashboard</span>
+                        </button>
+                        <div class="form-footer">
+                            Belum punya akun? <a href="#" onclick="switchTab('register'); return false;">Daftar di sini</a>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- REGISTER -->
+                <div id="registerForm" class="auth-form">
+                    <form id="registerFormElement" autocomplete="off" novalidate>
+                        <div class="form-group">
+                            <label><i class="fas fa-user"></i> Nama Lengkap</label>
+                            <i class="fas fa-user input-icon"></i>
+                            <input type="text" id="regName" placeholder="Masukkan nama lengkap" required>
+                        </div>
+                        <div class="form-group">
+                            <label><i class="fas fa-envelope"></i> Email</label>
+                            <i class="fas fa-envelope input-icon"></i>
+                            <input type="email" id="regEmail" placeholder="Masukkan email" required>
+                        </div>
+                        <div class="form-group">
+                            <label><i class="fas fa-user-tag"></i> Username</label>
+                            <i class="fas fa-user-tag input-icon"></i>
+                            <input type="text" id="regUsername" placeholder="Pilih username" required minlength="3">
+                        </div>
+                        <div class="form-group">
+                            <label><i class="fas fa-lock"></i> Password</label>
+                            <i class="fas fa-lock input-icon"></i>
+                            <input type="password" id="regPassword" placeholder="Minimal 6 karakter" required minlength="6">
+                        </div>
+                        <div class="form-group">
+                            <label><i class="fas fa-check-circle"></i> Konfirmasi Password</label>
+                            <i class="fas fa-check-circle input-icon"></i>
+                            <input type="password" id="regConfirmPassword" placeholder="Ulangi password" required minlength="6">
+                        </div>
+                        <button type="submit" class="btn-auth" id="registerBtn">
+                            <span class="spinner"></span>
+                            <span class="btn-text"><i class="fas fa-user-plus"></i> Register</span>
+                        </button>
+                        <div class="form-footer">
+                            Sudah punya akun? <a href="#" onclick="switchTab('login'); return false;">Login di sini</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="badge-version">Fleet Tracker v2.0 • Supabase</div>
+
+    <script>
+        // ===================================================================
+        //  KONFIGURASI SUPABASE
+        // ===================================================================
+        // Di Netlify, set SUPABASE_URL dan SUPABASE_ANON_KEY di Environment Variables
+        const SUPABASE_URL = window.SUPABASE_URL || 'https://your-project.supabase.co';
+        const SUPABASE_ANON_KEY = window.SUPABASE_ANON_KEY || 'your-anon-key';
+
+        // Inisialisasi Supabase Client
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        // ===================================================================
+        //  DOM REFS
+        // ===================================================================
+        const errorDiv = document.getElementById('errorMsg');
+        const successDiv = document.getElementById('successMsg');
+
+        function showError(msg) {
+            errorDiv.textContent = msg;
+            errorDiv.style.display = 'block';
+            successDiv.style.display = 'none';
+            clearTimeout(errorDiv._hide);
+            errorDiv._hide = setTimeout(() => { errorDiv.style.display = 'none'; }, 5000);
+        }
+
+        function showSuccess(msg) {
+            successDiv.textContent = msg;
+            successDiv.style.display = 'block';
+            errorDiv.style.display = 'none';
+            clearTimeout(successDiv._hide);
+            successDiv._hide = setTimeout(() => { successDiv.style.display = 'none'; }, 5000);
+        }
+
+        // ===================================================================
+        //  SWITCH TAB
+        // ===================================================================
+        function switchTab(tab) {
+            document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
+            const targetTab = document.querySelector(`.auth-tab[data-tab="${tab}"]`);
+            if (targetTab) targetTab.classList.add('active');
+
+            const loginForm = document.getElementById('loginForm');
+            const registerForm = document.getElementById('registerForm');
+            loginForm.classList.toggle('active', tab === 'login');
+            registerForm.classList.toggle('active', tab === 'register');
+
+            errorDiv.style.display = 'none';
+            successDiv.style.display = 'none';
+            document.querySelectorAll('.form-group input').forEach(inp => {
+                inp.style.borderColor = '';
+            });
+        }
+
+        document.querySelectorAll('.auth-tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                switchTab(tab.getAttribute('data-tab'));
+            });
+            tab.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    switchTab(tab.getAttribute('data-tab'));
+                }
+            });
+        });
+
+        // ===================================================================
+        //  FULLSCREEN
+        // ===================================================================
+        const fullscreenToggle = document.getElementById('fullscreenToggle');
+        const fullscreenIcon = document.getElementById('fullscreenIcon');
+
+        function toggleFullscreen() {
+            if (!document.fullscreenElement && !document.webkitFullscreenElement && !document.msFullscreenElement) {
+                const elem = document.documentElement;
+                if (elem.requestFullscreen) elem.requestFullscreen();
+                else if (elem.webkitRequestFullscreen) elem.webkitRequestFullscreen();
+                else if (elem.msRequestFullscreen) elem.msRequestFullscreen();
+            } else {
+                if (document.exitFullscreen) document.exitFullscreen();
+                else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+                else if (document.msExitFullscreen) document.msExitFullscreen();
+            }
+        }
+
+        function updateFullscreenIcon() {
+            if (document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement) {
+                fullscreenIcon.className = 'fas fa-compress';
+            } else {
+                fullscreenIcon.className = 'fas fa-expand';
+            }
+        }
+
+        fullscreenToggle.addEventListener('click', toggleFullscreen);
+        document.addEventListener('fullscreenchange', updateFullscreenIcon);
+        document.addEventListener('webkitfullscreenchange', updateFullscreenIcon);
+        document.addEventListener('msfullscreenchange', updateFullscreenIcon);
+
+        // ===================================================================
+        //  LOADING STATE
+        // ===================================================================
+        function setLoading(btn, loading) {
+            if (loading) {
+                btn.classList.add('loading');
+                btn.disabled = true;
+            } else {
+                btn.classList.remove('loading');
+                btn.disabled = false;
+            }
+        }
+
+        // ===================================================================
+        //  REGISTER (dengan Supabase Auth)
+        // ===================================================================
+        async function registerUser(e) {
+            e.preventDefault();
+            const name = document.getElementById('regName').value.trim();
+            const email = document.getElementById('regEmail').value.trim();
+            const username = document.getElementById('regUsername').value.trim();
+            const password = document.getElementById('regPassword').value;
+            const confirm = document.getElementById('regConfirmPassword').value;
+            const btn = document.getElementById('registerBtn');
+
+            // Validasi
+            if (!name || !email || !username || !password) {
+                showError('Semua field wajib diisi!');
+                return;
+            }
+            if (password !== confirm) {
+                showError('Password tidak cocok!');
+                return;
+            }
+            if (password.length < 6) {
+                showError('Password minimal 6 karakter!');
+                return;
+            }
+            if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+                showError('Format email tidak valid!');
+                return;
+            }
+
+            setLoading(btn, true);
+
+            try {
+                // 1. Daftarkan user ke Supabase Auth
+                const { data: authData, error: authError } = await supabase.auth.signUp({
+                    email: email,
+                    password: password,
+                    options: {
+                        data: {
+                            name: name,
+                            username: username
+                        }
+                    }
+                });
+
+                if (authError) throw authError;
+
+                if (!authData.user) {
+                    throw new Error('Gagal membuat akun, coba lagi.');
+                }
+
+                // 2. Profile dan settings akan otomatis dibuat oleh trigger di Supabase
+                //    Jadi kita tidak perlu insert manual.
+
+                const userId = authData.user.id;
+
+                // 3. Simpan ke localStorage
+                localStorage.setItem('fleet_current_user', JSON.stringify({
+                    id: userId,
+                    name: name,
+                    email: email,
+                    username: username
+                }));
+
+                showSuccess('Pendaftaran berhasil! Mengarahkan ke dashboard...');
+                setTimeout(() => window.location.href = 'dashboard.html', 1500);
+
+            } catch (err) {
+                console.error('Register error:', err);
+                if (err.message.includes('already registered')) {
+                    showError('Email sudah terdaftar, silakan login.');
+                } else {
+                    showError('Registrasi gagal: ' + (err.message || 'Terjadi kesalahan.'));
+                }
+            } finally {
+                setLoading(btn, false);
+            }
+        }
+
+        // ===================================================================
+        //  LOGIN (dengan Supabase Auth)
+        // ===================================================================
+        async function loginUser(e) {
+            e.preventDefault();
+            const email = document.getElementById('loginEmail').value.trim();
+            const password = document.getElementById('loginPassword').value;
+            const btn = document.getElementById('loginBtn');
+
+            if (!email || !password) {
+                showError('Email dan password wajib diisi!');
+                return;
+            }
+
+            setLoading(btn, true);
+
+            try {
+                const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+                    email: email,
+                    password: password
+                });
+
+                if (authError) throw authError;
+
+                if (!authData.user) {
+                    throw new Error('Akun tidak ditemukan.');
+                }
+
+                const user = authData.user;
+                const userId = user.id;
+
+                // Ambil profile dari tabel profiles
+                const { data: profileData, error: profileError } = await supabase
+                    .from('profiles')
+                    .select('name, username')
+                    .eq('user_id', userId)
+                    .single();
+
+                if (profileError) {
+                    console.warn('Gagal mengambil profile:', profileError);
+                }
+
+                const userName = profileData?.name || user.user_metadata?.name || email.split('@')[0];
+                const userUsername = profileData?.username || user.user_metadata?.username || email.split('@')[0];
+
+                // Simpan ke localStorage
+                localStorage.setItem('fleet_current_user', JSON.stringify({
+                    id: userId,
+                    name: userName,
+                    email: user.email,
+                    username: userUsername,
+                    // Simpan access_token untuk API call
+                    access_token: authData.session?.access_token
+                }));
+
+                showSuccess('Login berhasil! Mengarahkan ke dashboard...');
+                setTimeout(() => window.location.href = 'dashboard.html', 1500);
+
+            } catch (err) {
+                console.error('Login error:', err);
+                if (err.message.includes('Invalid login credentials')) {
+                    showError('Email atau password salah.');
+                } else {
+                    showError('Login gagal: ' + (err.message || 'Terjadi kesalahan.'));
+                }
+            } finally {
+                setLoading(btn, false);
+            }
+        }
+
+        // ===================================================================
+        //  EVENT LISTENERS
+        // ===================================================================
+        document.getElementById('loginFormElement').addEventListener('submit', loginUser);
+        document.getElementById('registerFormElement').addEventListener('submit', registerUser);
+
+        // ===================================================================
+        //  CEK SESSION — jika sudah login, redirect ke dashboard
+        // ===================================================================
+        (function checkSession() {
+            const raw = localStorage.getItem('fleet_current_user');
+            if (!raw) return;
+            try {
+                const user = JSON.parse(raw);
+                if (user && user.id) {
+                    window.location.href = 'dashboard.html';
+                }
+            } catch (_) {
+                localStorage.removeItem('fleet_current_user');
+            }
+        })();
+
+        // ===================================================================
+        //  AUTO-FOCUS & KEYBOARD SHORTCUTS
+        // ===================================================================
+        document.addEventListener('DOMContentLoaded', () => {
+            const emailInput = document.getElementById('loginEmail');
+            if (emailInput) emailInput.focus();
+
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    errorDiv.style.display = 'none';
+                    successDiv.style.display = 'none';
+                }
+            });
+        });
+
+        console.log('🚀 Fleet Tracker Login — Supabase Ready');
+        console.log('📡 Supabase URL:', SUPABASE_URL);
+    </script>
+</body>
+</html>

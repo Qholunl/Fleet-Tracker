@@ -1,0 +1,2428 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Fleet Tracker — Analisis Data</title>
+
+    <!-- Fonts & Icons -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- Leaflet.js -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <!-- Supabase Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <style>
+        /* ===== RESET & BASE (sama seperti sebelumnya) ===== */
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #07080f;
+            color: #f0f2fa;
+            padding: 20px;
+        }
+        .container { max-width: 1100px; margin: 0 auto; }
+
+        /* ===== CUSTOM SCROLLBAR ===== */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(255,255,255,0.02);
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(102,126,234,0.3);
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(102,126,234,0.5);
+        }
+
+        /* ===== FOCUS RING ===== */
+        :focus-visible {
+            outline: 2px solid #667eea;
+            outline-offset: 2px;
+            border-radius: 4px;
+        }
+
+        /* ===== ANIMATIONS ===== */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes pulse-dot {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(0.8); }
+        }
+        @keyframes shimmer {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .fade-in {
+            animation: fadeIn 0.4s ease-out;
+        }
+
+        /* ===== HEADER ===== */
+        .header {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            margin-bottom: 30px;
+        }
+
+        .header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+
+        .header-left h1 {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: #fff;
+        }
+        .header-left h1 i {
+            color: #667eea;
+        }
+        .header-left p {
+            color: #cbd5e0;
+            font-size: 0.85rem;
+            margin-top: 4px;
+        }
+
+        /* ===== USER PROFILE MENU ===== */
+        .user-profile {
+            position: relative;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+        }
+        .user-profile .avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 1.1rem;
+            color: #fff;
+            border: 2px solid rgba(255,255,255,0.1);
+            transition: all 0.25s ease;
+        }
+        .user-profile .avatar:hover {
+            border-color: rgba(102,126,234,0.5);
+            transform: scale(1.05);
+        }
+        .user-profile .status-dot {
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #4ade80;
+            border: 2px solid #07080f;
+            animation: pulse-dot 2s ease-in-out infinite;
+        }
+
+        .dropdown-menu {
+            display: none;
+            position: absolute;
+            top: 100%;
+            right: 0;
+            background: #1a1a2e;
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 12px;
+            padding: 8px 0;
+            min-width: 200px;
+            backdrop-filter: blur(12px);
+            box-shadow: 0 12px 40px rgba(0,0,0,0.6);
+            z-index: 1000;
+        }
+        .dropdown-menu.active {
+            display: block;
+        }
+        .dropdown-menu .dropdown-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 16px;
+            color: #cbd5e0;
+            text-decoration: none;
+            transition: all 0.25s ease;
+            cursor: pointer;
+            border: none;
+            background: transparent;
+            width: 100%;
+            font-size: 0.85rem;
+            font-family: 'Inter', sans-serif;
+        }
+        .dropdown-menu .dropdown-item:hover {
+            background: rgba(255,255,255,0.05);
+            color: #fff;
+        }
+        .dropdown-menu .dropdown-item i {
+            width: 20px;
+            text-align: center;
+        }
+        .dropdown-menu .dropdown-item.danger {
+            color: #f87171;
+        }
+        .dropdown-menu .dropdown-item.danger:hover {
+            background: rgba(248,113,113,0.1);
+        }
+        .dropdown-menu .dropdown-divider {
+            height: 1px;
+            background: rgba(255,255,255,0.06);
+            margin: 4px 0;
+        }
+
+        .header-nav {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        /* ===== HEADER BOTTOM (FILTER) ===== */
+        .header-bottom {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 10px;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 16px;
+            padding: 12px 16px;
+            backdrop-filter: blur(12px);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+            position: relative;
+        }
+        .header-bottom::before {
+            content: '';
+            position: absolute;
+            inset: -1px;
+            border-radius: 16px;
+            padding: 1px;
+            background: linear-gradient(135deg, rgba(102,126,234,0.1), transparent);
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
+            pointer-events: none;
+        }
+
+        .filter-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex: 1 1 auto;
+            min-width: 140px;
+        }
+        .filter-group label {
+            color: #cbd5e0;
+            font-size: 0.75rem;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+        .header-bottom select,
+        .header-bottom input[type="date"] {
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 10px;
+            padding: 10px 14px;
+            color: #fff;
+            font-weight: 500;
+            outline: none;
+            cursor: pointer;
+            font-size: 0.85rem;
+            min-width: 140px;
+            flex: 1 1 auto;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            appearance: none;
+            -webkit-appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23cbd5e0' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+            padding-right: 36px;
+        }
+        .header-bottom select option,
+        .header-bottom input[type="date"] option {
+            background: #1a1a2e;
+        }
+        .header-bottom input[type="date"]::-webkit-calendar-picker-indicator {
+            filter: invert(1);
+            cursor: pointer;
+        }
+        .header-bottom select:hover,
+        .header-bottom input[type="date"]:hover {
+            background: rgba(255,255,255,0.10);
+            border-color: rgba(255,255,255,0.2);
+        }
+        .header-bottom select:focus,
+        .header-bottom input[type="date"]:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102,126,234,0.2);
+        }
+
+        /* ===== BUTTONS ===== */
+        .btn-action {
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 10px;
+            padding: 10px 18px;
+            color: #fff;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            border: none;
+            min-height: 44px;
+            min-width: 44px;
+        }
+        .btn-action:hover {
+            background: rgba(255,255,255,0.12);
+            transform: translateY(-2px) scale(1.02);
+            box-shadow: 0 4px 20px rgba(102,126,234,0.2);
+        }
+        .btn-action.primary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-color: transparent;
+        }
+        .btn-action.primary:hover { 
+            opacity: 0.9;
+            box-shadow: 0 4px 24px rgba(102,126,234,0.4);
+        }
+        .btn-action.export {
+            background: linear-gradient(135deg, #4ade80, #22c55e);
+            border-color: transparent;
+            color: #1a1a2e;
+        }
+        .btn-action.export:hover { 
+            opacity: 0.85;
+            box-shadow: 0 4px 24px rgba(74,222,128,0.4);
+        }
+        .btn-action.filter {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-color: transparent;
+            color: #fff;
+            box-shadow: 0 4px 16px rgba(102,126,234,0.3);
+        }
+        .btn-action.filter:hover { 
+            opacity: 0.9; 
+            transform: translateY(-2px) scale(1.02);
+            box-shadow: 0 6px 28px rgba(102,126,234,0.5);
+        }
+        .btn-action.reset {
+            background: rgba(255,255,255,0.05);
+            border-color: rgba(255,255,255,0.1);
+        }
+        .btn-action.reset:hover { 
+            background: rgba(255,255,255,0.12);
+            box-shadow: 0 4px 20px rgba(255,255,255,0.08);
+        }
+        .btn-action:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        /* ===== STATS ===== */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 16px;
+            margin-bottom: 30px;
+        }
+        .stat-card {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 16px;
+            padding: 20px 14px;
+            text-align: center;
+            backdrop-filter: blur(12px);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            inset: -1px;
+            border-radius: 16px;
+            padding: 1px;
+            background: linear-gradient(135deg, rgba(102,126,234,0.2), transparent);
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
+            pointer-events: none;
+        }
+        .stat-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 48px rgba(102,126,234,0.25);
+        }
+        .stat-card .icon {
+            font-size: 1.4rem;
+            margin-bottom: 4px;
+            opacity: 0.6;
+        }
+        .stat-card .value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #4ade80;
+            transition: all 0.3s ease;
+        }
+        .stat-card .value.danger { color: #f87171; }
+        .stat-card .value.warning { color: #fbbf24; }
+        .stat-card .value.info { color: #818cf8; }
+        .stat-card .label {
+            font-size: 0.75rem;
+            color: #cbd5e0;
+            margin-top: 4px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* ===== SKELETON LOADER ===== */
+        .skeleton {
+            background: linear-gradient(90deg, rgba(255,255,255,0.03) 25%, rgba(255,255,255,0.06) 50%, rgba(255,255,255,0.03) 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s ease-in-out infinite;
+            border-radius: 4px;
+        }
+        .skeleton-text {
+            height: 1.5rem;
+            width: 80%;
+            margin: 0 auto;
+        }
+        .stat-card.loading .value {
+            color: transparent;
+        }
+        .stat-card.loading .icon {
+            opacity: 0.3;
+        }
+
+        /* ===== GEOFENCE ===== */
+        .geofence-list-wrap {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 16px;
+            padding: 18px;
+            margin-bottom: 24px;
+            backdrop-filter: blur(12px);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+        .geofence-list-wrap h3 {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #cbd5e0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+        .geofence-items {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .geofence-tag {
+            background: rgba(102,126,234,0.12);
+            border: 1px solid rgba(102,126,234,0.2);
+            border-radius: 40px;
+            padding: 4px 14px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #667eea;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .geofence-tag i {
+            font-size: 0.65rem;
+            opacity: 0.7;
+        }
+        .geofence-empty {
+            color: #cbd5e0;
+            font-size: 0.8rem;
+            padding: 8px 0;
+        }
+
+        /* ===== CHARTS - GRID LAYOUT ===== */
+        .charts-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 24px;
+            margin-bottom: 30px;
+        }
+        @media (min-width: 1024px) {
+            .charts-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+        .chart-box {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 16px;
+            padding: 20px 20px 10px;
+            width: 100%;
+            backdrop-filter: blur(12px);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+            position: relative;
+            animation: fadeIn 0.5s ease-out;
+        }
+        .chart-box::before {
+            content: '';
+            position: absolute;
+            inset: -1px;
+            border-radius: 16px;
+            padding: 1px;
+            background: linear-gradient(135deg, rgba(102,126,234,0.1), transparent);
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
+            pointer-events: none;
+        }
+        .chart-box:hover {
+            box-shadow: 0 8px 40px rgba(102,126,234,0.15);
+        }
+        .chart-box .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .chart-box .chart-header h3 {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #cbd5e0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .chart-box .chart-header select {
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 8px;
+            padding: 4px 10px;
+            color: #fff;
+            font-weight: 500;
+            outline: none;
+            cursor: pointer;
+            font-size: 0.75rem;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            min-height: 32px;
+        }
+        .chart-box .chart-header select:focus-visible {
+            outline: 2px solid #667eea;
+            outline-offset: 2px;
+        }
+        .chart-box canvas {
+            width: 100% !important;
+            height: 300px !important;
+            max-height: 300px;
+        }
+        .chart-box .empty-overlay {
+            text-align: center;
+            color: #cbd5e0;
+            padding: 40px 20px;
+            font-size: 0.95rem;
+            display: none;
+        }
+        .chart-box .empty-overlay svg {
+            margin-bottom: 12px;
+            opacity: 0.4;
+        }
+        .chart-box.empty .empty-overlay {
+            display: block;
+        }
+        .chart-box.empty canvas {
+            display: none;
+        }
+
+        /* ===== ALERT FILTER ===== */
+        .alert-filter-row {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .alert-filter-row label {
+            font-size: 0.75rem;
+            color: #cbd5e0;
+            font-weight: 600;
+        }
+        .filter-chip {
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 40px;
+            padding: 6px 16px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            color: #cbd5e0;
+            min-height: 36px;
+            display: inline-flex;
+            align-items: center;
+        }
+        .filter-chip:hover {
+            background: rgba(255,255,255,0.08);
+            transform: translateY(-2px);
+        }
+        .filter-chip.active {
+            background: #667eea;
+            color: #fff;
+            border-color: #667eea;
+        }
+        .filter-chip.active.theft { background: #f87171; border-color: #f87171; }
+        .filter-chip.active.speeding { background: #fbbf24; border-color: #fbbf24; color: #1a1a2e; }
+        .filter-chip.active.geofence { background: #667eea; border-color: #667eea; }
+
+        /* ===== ALERT TABLE ===== */
+        .alert-table-wrap {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 16px;
+            padding: 18px;
+            margin-top: 20px;
+            backdrop-filter: blur(12px);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+            animation: fadeIn 0.5s ease-out;
+        }
+        .alert-table-wrap .header-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-bottom: 12px;
+        }
+        .alert-table-wrap h3 {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #cbd5e0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .alert-count-badge {
+            background: rgba(255,255,255,0.06);
+            padding: 2px 12px;
+            border-radius: 40px;
+            font-size: 0.75rem;
+            color: #cbd5e0;
+        }
+        .alert-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.75rem;
+        }
+        .alert-table th {
+            text-align: left;
+            padding: 8px 10px;
+            color: #cbd5e0;
+            font-weight: 600;
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+            font-size: 0.75rem;
+        }
+        .alert-table td {
+            padding: 8px 10px;
+            border-bottom: 1px solid rgba(255,255,255,0.04);
+            font-size: 0.75rem;
+        }
+        .alert-table tr:hover td { background: rgba(255,255,255,0.03); }
+
+        /* ===== BADGE ===== */
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 12px;
+            border-radius: 40px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            min-height: 28px;
+        }
+        .badge i {
+            font-size: 0.65rem;
+        }
+        .badge.theft { background: rgba(248,113,113,0.2); color: #f87171; }
+        .badge.speeding { background: rgba(251,191,36,0.2); color: #fbbf24; }
+        .badge.geofence { background: rgba(102,126,234,0.2); color: #667eea; }
+        .badge.normal { background: rgba(74,222,128,0.2); color: #4ade80; }
+        .badge.resolved { background: rgba(74,222,128,0.1); color: #4ade80; }
+        .badge.pending { background: rgba(248,113,113,0.15); color: #f87171; }
+
+        .btn-resolve {
+            background: rgba(74,222,128,0.15);
+            border: 1px solid rgba(74,222,128,0.3);
+            border-radius: 6px;
+            padding: 6px 14px;
+            color: #4ade80;
+            font-size: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            min-height: 36px;
+            min-width: 44px;
+            white-space: nowrap;
+        }
+        .btn-resolve:hover:not(:disabled) {
+            background: rgba(74,222,128,0.25);
+            transform: scale(1.05);
+        }
+        .btn-resolve:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+        .btn-resolve.loading {
+            opacity: 0.6;
+            cursor: wait;
+            position: relative;
+            color: transparent;
+        }
+        .btn-resolve.loading::after {
+            content: '';
+            position: absolute;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(74,222,128,0.2);
+            border-top-color: #4ade80;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        /* ===== PAGINATION ===== */
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 12px;
+            margin-top: 16px;
+            padding-top: 12px;
+            border-top: 1px solid rgba(255,255,255,0.06);
+        }
+        .pagination button {
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 8px;
+            padding: 6px 16px;
+            color: #cbd5e0;
+            font-weight: 600;
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            min-height: 36px;
+            min-width: 44px;
+        }
+        .pagination button:hover:not(:disabled) {
+            background: rgba(255,255,255,0.12);
+            color: #fff;
+        }
+        .pagination button:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+        .pagination span {
+            color: #cbd5e0;
+            font-size: 0.8rem;
+        }
+
+        /* ===== TOAST ===== */
+        #alertToast {
+            display: none;
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            background: #f87171;
+            color: #fff;
+            padding: 14px 24px;
+            border-radius: 14px;
+            z-index: 2000;
+            max-width: 90%;
+            font-size: 0.85rem;
+            font-weight: 500;
+            box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+            border: 1px solid rgba(255,255,255,0.1);
+            backdrop-filter: blur(12px);
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+        }
+        #alertToast.show {
+            display: block;
+            transform: translateY(0);
+            opacity: 1;
+        }
+        #alertToast.success { background: #4ade80; color: #1a1a2e; }
+        #alertToast.warning { background: #fbbf24; color: #1a1a2e; }
+
+        /* ===== CONFIRMATION MODAL ===== */
+        .modal-overlay.confirm-modal .modal-content {
+            max-width: 420px;
+            text-align: center;
+        }
+        .modal-actions {
+            display: flex;
+            gap: 12px;
+            margin-top: 20px;
+            justify-content: center;
+        }
+        .modal-actions .btn-action {
+            min-width: 100px;
+            justify-content: center;
+        }
+        .btn-action.danger {
+            background: #f87171;
+            color: #fff;
+            border-color: #f87171;
+        }
+        .btn-action.danger:hover {
+            background: #ef4444;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(248,113,113,0.4);
+        }
+
+        /* ===== MAP MODAL ===== */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.7);
+            backdrop-filter: blur(8px);
+            z-index: 10000;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .modal-overlay.active { display: flex; }
+        .modal-content {
+            background: #1a1a2e;
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 20px;
+            padding: 24px;
+            max-width: 700px;
+            width: 100%;
+            max-height: 90vh;
+            position: relative;
+            box-shadow: 0 24px 64px rgba(0,0,0,0.6);
+        }
+        .modal-close {
+            position: absolute;
+            top: 12px;
+            right: 16px;
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 50%;
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #cbd5e0;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            font-size: 1.2rem;
+            min-height: 36px;
+            min-width: 36px;
+        }
+        .modal-close:hover {
+            background: rgba(255,255,255,0.12);
+            color: #fff;
+            transform: rotate(90deg);
+        }
+        .modal-map-container {
+            height: 400px;
+            border-radius: 12px;
+            overflow: hidden;
+            margin-top: 8px;
+            border: 1px solid rgba(255,255,255,0.06);
+        }
+        .modal-title {
+            color: #fff;
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 4px;
+            padding-right: 32px;
+        }
+        .modal-subtitle {
+            color: #cbd5e0;
+            font-size: 0.85rem;
+            margin-bottom: 12px;
+        }
+
+        /* ===== FOOTER ===== */
+        .footer-nav {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid rgba(255,255,255,0.06);
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+        .footer-nav a {
+            color: #cbd5e0;
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.9rem;
+            min-height: 44px;
+        }
+        .footer-nav a:hover { color: #fff; }
+
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 1024px) {
+            .charts-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .stats-grid { grid-template-columns: repeat(2, 1fr); }
+            .stat-card { padding: 14px 10px; }
+            .stat-card .value { font-size: 1.2rem; }
+            .stat-card .label { font-size: 0.65rem; }
+
+            .header-top {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 12px;
+            }
+            .header-left { text-align: center; }
+            .header-nav { justify-content: center; }
+
+            .header-bottom {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 10px;
+                padding: 16px;
+            }
+            .filter-group {
+                flex-direction: column;
+                align-items: stretch;
+                min-width: unset;
+            }
+            .filter-group label {
+                margin-bottom: 2px;
+            }
+            .header-bottom select,
+            .header-bottom input[type="date"] {
+                min-width: unset;
+                width: 100%;
+            }
+            .header-bottom .btn-action {
+                width: 100%;
+                justify-content: center;
+            }
+
+            .chart-box canvas {
+                height: 220px !important;
+                max-height: 220px;
+            }
+
+            .modal-content {
+                padding: 16px;
+                margin: 10px;
+            }
+            .modal-map-container {
+                height: 300px;
+            }
+
+            /* ===== MOBILE CARD LAYOUT ===== */
+            .alert-table thead {
+                display: none;
+            }
+            .alert-table tbody tr {
+                display: block;
+                border: 1px solid rgba(255,255,255,0.06);
+                border-radius: 12px;
+                padding: 12px;
+                margin-bottom: 12px;
+                background: rgba(255,255,255,0.02);
+                transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            }
+            .alert-table tbody tr:hover td {
+                background: transparent;
+            }
+            .alert-table tbody td {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 6px 4px;
+                border: none;
+                gap: 8px;
+                font-size: 0.75rem;
+            }
+            .alert-table tbody td::before {
+                content: attr(data-label);
+                font-weight: 600;
+                color: #cbd5e0;
+                font-size: 0.7rem;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                min-width: 70px;
+            }
+            .alert-table tbody td:last-child {
+                border-top: 1px solid rgba(255,255,255,0.04);
+                padding-top: 10px;
+                margin-top: 4px;
+                justify-content: center;
+                flex-direction: column;
+                gap: 6px;
+            }
+            .alert-table tbody td:last-child::before {
+                display: none;
+            }
+            .alert-table tbody td .btn-resolve {
+                width: 100%;
+                justify-content: center;
+            }
+            .alert-table tbody td a {
+                word-break: break-all;
+            }
+            
+            .pagination {
+                flex-wrap: wrap;
+                gap: 8px;
+            }
+            .pagination button {
+                padding: 6px 12px;
+                font-size: 0.7rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .stats-grid { 
+                grid-template-columns: repeat(2, 1fr); 
+                gap: 10px; 
+            }
+            .stat-card { padding: 10px 8px; }
+            .stat-card .value { font-size: 1rem; }
+            .stat-card .label { font-size: 0.6rem; }
+            
+            .header-left h1 { font-size: 1.2rem; }
+            .btn-action { font-size: 0.7rem; padding: 8px 12px; }
+            
+            .modal-content { padding: 12px; }
+            .modal-map-container { height: 250px; }
+        }
+
+        /* ===== ARIA LIVE ===== */
+        #ariaLive {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            border: 0;
+        }
+    </style>
+</head>
+<body>
+
+<!-- ARIA LIVE -->
+<div id="ariaLive" aria-live="polite" aria-atomic="true"></div>
+
+<!-- TOAST -->
+<div id="alertToast" role="alert" aria-live="polite"></div>
+
+<!-- CONFIRMATION MODAL -->
+<div class="modal-overlay confirm-modal" id="confirmModal" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
+    <div class="modal-content" onclick="event.stopPropagation()">
+        <button class="modal-close" onclick="closeConfirmModal()" aria-label="Tutup">&times;</button>
+        <div class="modal-title" id="confirmTitle">Konfirmasi</div>
+        <div class="modal-subtitle" id="confirmMessage">Apakah Anda yakin ingin keluar?</div>
+        <div class="modal-actions">
+            <button class="btn-action reset" onclick="closeConfirmModal()">Batal</button>
+            <button class="btn-action danger" id="confirmActionBtn" onclick="confirmLogout()">Keluar</button>
+        </div>
+    </div>
+</div>
+
+<!-- MAP MODAL -->
+<div class="modal-overlay" id="mapModal" role="dialog" aria-modal="true" aria-labelledby="modalTitle" onclick="closeModalOutside(event)">
+    <div class="modal-content" onclick="event.stopPropagation()">
+        <button class="modal-close" onclick="closeModal()" aria-label="Tutup peta">&times;</button>
+        <div class="modal-title" id="modalTitle">Lokasi Alert</div>
+        <div class="modal-subtitle" id="modalSubtitle">Koordinat: -</div>
+        <div class="modal-map-container" id="modalMapContainer"></div>
+    </div>
+</div>
+
+<div class="container">
+    <!-- ===== HEADER ===== -->
+    <div class="header">
+        <div class="header-top">
+            <div class="header-left">
+                <h1><i class="fas fa-chart-pie"></i> Analisis Data IoT</h1>
+                <p>Filter perangkat &amp; tanggal untuk melihat statistik lengkap</p>
+            </div>
+            <div class="header-nav">
+                <a href="dashboard.html" class="btn-action primary">
+                    <i class="fas fa-arrow-left"></i> Dashboard
+                </a>
+                <a href="export.html" class="btn-action export">
+                    <i class="fas fa-file-download"></i> Pusat Ekspor
+                </a>
+                <!-- User Profile -->
+                <div class="user-profile" id="userProfile" role="button" tabindex="0" aria-haspopup="true" aria-expanded="false">
+                    <div class="avatar" id="userAvatar">U</div>
+                    <span class="status-dot" title="Online"></span>
+                    <div class="dropdown-menu" id="dropdownMenu" role="menu">
+                        <button class="dropdown-item" role="menuitem" onclick="showToast('Fitur profil sedang dalam pengembangan', 'warning')">
+                            <i class="fas fa-user"></i> Profil Pengguna
+                        </button>
+                        <button class="dropdown-item" role="menuitem" onclick="showToast('Fitur pengaturan akun sedang dalam pengembangan', 'warning')">
+                            <i class="fas fa-cog"></i> Pengaturan Akun
+                        </button>
+                        <div class="dropdown-divider"></div>
+                        <button class="dropdown-item danger" role="menuitem" onclick="handleLogout()">
+                            <i class="fas fa-sign-out-alt"></i> Logout
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filter Control Panel -->
+        <div class="header-bottom">
+            <div class="filter-group">
+                <label for="deviceSelect">Perangkat</label>
+                <select id="deviceSelect">
+                    <option value="">Pilih Perangkat...</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label for="startDate">Mulai</label>
+                <input type="date" id="startDate" />
+            </div>
+            <span style="color:#cbd5e0; font-size:0.8rem;">s/d</span>
+            <div class="filter-group">
+                <label for="endDate">Akhir</label>
+                <input type="date" id="endDate" />
+            </div>
+            <button class="btn-action filter" onclick="applyFilter()">
+                <i class="fas fa-filter"></i> Terapkan
+            </button>
+            <button class="btn-action reset" onclick="resetFilter()">
+                <i class="fas fa-undo"></i> Reset
+            </button>
+        </div>
+    </div>
+
+    <!-- STATISTIK -->
+    <div class="stats-grid" id="statsGrid">
+        <div class="stat-card loading" id="statCard1">
+            <div class="icon"><i class="fas fa-route"></i></div>
+            <div class="value info" id="statDistance">0 km</div>
+            <div class="label">Total Jarak</div>
+        </div>
+        <div class="stat-card loading" id="statCard2">
+            <div class="icon"><i class="fas fa-gas-pump"></i></div>
+            <div class="value" id="statFuel">0 L</div>
+            <div class="label">Konsumsi BBM</div>
+        </div>
+        <div class="stat-card loading" id="statCard3">
+            <div class="icon"><i class="fas fa-chart-line"></i></div>
+            <div class="value" id="statEfficiency">0 km/L</div>
+            <div class="label">Efisiensi</div>
+        </div>
+        <div class="stat-card loading" id="statCard4">
+            <div class="icon"><i class="fas fa-skull-crossbones"></i></div>
+            <div class="value danger" id="statTheft">0</div>
+            <div class="label">Indikasi Pencurian</div>
+        </div>
+        <div class="stat-card loading" id="statCard5">
+            <div class="icon"><i class="fas fa-speedometer"></i></div>
+            <div class="value warning" id="statSpeeding">0</div>
+            <div class="label">Speeding</div>
+        </div>
+        <div class="stat-card loading" id="statCard6">
+            <div class="icon"><i class="fas fa-draw-polygon"></i></div>
+            <div class="value info" id="statGeofence">0</div>
+            <div class="label">Keluar Zona</div>
+        </div>
+        <div class="stat-card loading" id="statCard7">
+            <div class="icon"><i class="fas fa-database"></i></div>
+            <div class="value" id="statPoints">0</div>
+            <div class="label">Data Point</div>
+        </div>
+        <div class="stat-card loading" id="statCard8">
+            <div class="icon"><i class="fas fa-bell"></i></div>
+            <div class="value warning" id="statAlerts">0</div>
+            <div class="label">Total Alert</div>
+        </div>
+    </div>
+
+    <!-- GEOFENCE -->
+    <div class="geofence-list-wrap">
+        <h3><i class="fas fa-draw-polygon" style="color:#667eea;"></i> Geofence Tersimpan di Database</h3>
+        <div id="geofenceListContainer">
+            <div class="geofence-empty">Memuat geofence...</div>
+        </div>
+    </div>
+
+    <!-- GRAFIK GRID -->
+    <div class="charts-grid">
+        <div class="chart-box empty" id="chartFuelBox">
+            <div class="chart-header">
+                <h3><i class="fas fa-tint" style="color:#fbbf24;"></i> Level Bahan Bakar (%)</h3>
+                <select id="chartTypeFuel" onchange="updateChartType('fuel', this.value)">
+                    <option value="line">📈 Line</option>
+                    <option value="bar">📊 Bar</option>
+                    <option value="scatter">⏺ Scatter</option>
+                    <option value="area">📈 Area</option>
+                    <option value="step">📈 Step</option>
+                </select>
+            </div>
+            <canvas id="fuelChart"></canvas>
+            <div class="empty-overlay">
+                <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#667eea" stroke-width="1.5">
+                    <path d="M3 3v18h18" />
+                    <path d="M18 17V9" />
+                    <path d="M13 17V5" />
+                    <path d="M8 17v-4" />
+                </svg>
+                <div>📊 Pilih perangkat &amp; tanggal</div>
+            </div>
+        </div>
+        <div class="chart-box empty" id="chartFlowBox">
+            <div class="chart-header">
+                <h3><i class="fas fa-tachometer-alt" style="color:#4ade80;"></i> Laju Aliran &amp; Speed</h3>
+                <select id="chartTypeFlow" onchange="updateChartType('flow', this.value)">
+                    <option value="line">📈 Line</option>
+                    <option value="bar">📊 Bar</option>
+                    <option value="scatter">⏺ Scatter</option>
+                    <option value="area">📈 Area</option>
+                    <option value="step">📈 Step</option>
+                </select>
+            </div>
+            <canvas id="flowChart"></canvas>
+            <div class="empty-overlay">
+                <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#667eea" stroke-width="1.5">
+                    <path d="M3 3v18h18" />
+                    <path d="M18 17V9" />
+                    <path d="M13 17V5" />
+                    <path d="M8 17v-4" />
+                </svg>
+                <div>📊 Pilih perangkat &amp; tanggal</div>
+            </div>
+        </div>
+        <div class="chart-box empty" id="chartConsumptionBox">
+            <div class="chart-header">
+                <h3><i class="fas fa-gas-pump" style="color:#667eea;"></i> Konsumsi Kumulatif (Liter)</h3>
+                <select id="chartTypeConsumption" onchange="updateChartType('consumption', this.value)">
+                    <option value="line">📈 Line</option>
+                    <option value="bar">📊 Bar</option>
+                    <option value="scatter">⏺ Scatter</option>
+                    <option value="area">📈 Area</option>
+                    <option value="step">📈 Step</option>
+                </select>
+            </div>
+            <canvas id="consumptionChart"></canvas>
+            <div class="empty-overlay">
+                <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#667eea" stroke-width="1.5">
+                    <path d="M3 3v18h18" />
+                    <path d="M18 17V9" />
+                    <path d="M13 17V5" />
+                    <path d="M8 17v-4" />
+                </svg>
+                <div>📊 Pilih perangkat &amp; tanggal</div>
+            </div>
+        </div>
+        <div class="chart-box empty" id="chartEngineBox">
+            <div class="chart-header">
+                <h3><i class="fas fa-car" style="color:#f87171;"></i> Status Mesin (0=OFF / 1=ON)</h3>
+                <select id="chartTypeEngine" onchange="updateChartType('engine', this.value)">
+                    <option value="line">📈 Line</option>
+                    <option value="bar">📊 Bar</option>
+                    <option value="scatter">⏺ Scatter</option>
+                    <option value="area">📈 Area</option>
+                    <option value="step">📈 Step</option>
+                </select>
+            </div>
+            <canvas id="engineChart"></canvas>
+            <div class="empty-overlay">
+                <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#667eea" stroke-width="1.5">
+                    <path d="M3 3v18h18" />
+                    <path d="M18 17V9" />
+                    <path d="M13 17V5" />
+                    <path d="M8 17v-4" />
+                </svg>
+                <div>📊 Pilih perangkat &amp; tanggal</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ALERT TABLE -->
+    <div class="alert-table-wrap">
+        <div class="header-row">
+            <h3><i class="fas fa-exclamation-triangle" style="color:#f87171;"></i> Riwayat Deteksi Anomali / Alert</h3>
+            <span class="alert-count-badge" id="alertCountBadge">0 alert</span>
+        </div>
+        <div class="alert-filter-row">
+            <label>Filter Tipe:</label>
+            <span class="filter-chip active all" data-filter="all" role="button" tabindex="0" aria-selected="true">Semua</span>
+            <span class="filter-chip theft" data-filter="theft" role="button" tabindex="0" aria-selected="false">Pencurian</span>
+            <span class="filter-chip speeding" data-filter="speeding" role="button" tabindex="0" aria-selected="false">Speeding</span>
+            <span class="filter-chip geofence" data-filter="geofence" role="button" tabindex="0" aria-selected="false">Geofence</span>
+        </div>
+        <div style="overflow-x:auto;">
+            <table class="alert-table" id="alertTable">
+                <thead>
+                    <tr>
+                        <th>Waktu</th>
+                        <th>Tipe</th>
+                        <th>Pesan</th>
+                        <th>Lokasi</th>
+                        <th>Status</th>
+                        <th>Aksi</th>
+                    </tr>
+                </thead>
+                <tbody id="alertBody">
+                    <tr><td colspan="6" style="text-align:center;color:#cbd5e0;padding:30px 0;">Pilih perangkat dan tanggal, lalu klik Terapkan</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="pagination" id="paginationControls">
+            <button id="prevPage" onclick="changePage(-1)" aria-label="Halaman sebelumnya">Prev</button>
+            <span id="pageInfo" aria-live="polite">Halaman 1 dari 1</span>
+            <button id="nextPage" onclick="changePage(1)" aria-label="Halaman berikutnya">Next</button>
+        </div>
+    </div>
+
+    <!-- FOOTER -->
+    <div class="footer-nav">
+        <a href="dashboard.html"><i class="fas fa-arrow-left"></i> Kembali ke Dashboard</a>
+        <a href="export.html"><i class="fas fa-file-export"></i> Pusat Ekspor Data</a>
+        <a href="#" onclick="handleLogout(); return false;"><i class="fas fa-sign-out-alt"></i> Logout</a>
+    </div>
+</div>
+
+<script>
+// ================================================================
+//  KONFIGURASI SUPABASE (gunakan environment variables di Netlify)
+// ================================================================
+
+// Ambil dari environment atau hardcode sementara (tidak aman untuk produksi)
+// Di Netlify, set SUPABASE_URL dan SUPABASE_ANON_KEY di Environment Variables
+const SUPABASE_URL = window.SUPABASE_URL || 'https://your-project.supabase.co';
+const SUPABASE_ANON_KEY = window.SUPABASE_ANON_KEY || 'your-anon-key';
+
+// ================================================================
+//  INISIALISASI SUPABASE CLIENT
+// ================================================================
+
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// ================================================================
+//  KONSTANTA
+// ================================================================
+
+const STORAGE_KEY = 'fleet_current_user';
+const SPEED_LIMIT = 80;
+const ITEMS_PER_PAGE = 10;
+const MAX_DATA_POINTS = 200;
+
+// ================================================================
+//  CEK LOGIN
+// ================================================================
+
+const userData = localStorage.getItem(STORAGE_KEY);
+if (!userData) {
+    window.location.href = 'index.html';
+    throw new Error('Unauthorized');
+}
+const currentUser = JSON.parse(userData);
+
+// ================================================================
+//  GLOBAL STATE
+// ================================================================
+
+let currentDevice = '';
+let currentStartDate = '';
+let currentEndDate = '';
+let currentAlertFilter = 'all';
+let chartInstances = {};
+let rawAlerts = [];
+let rawHistory = [];
+let filteredAlerts = [];
+let chartTypes = {
+    fuel: 'line',
+    flow: 'line',
+    consumption: 'line',
+    engine: 'line'
+};
+let geofencePolygons = [];
+let currentPage = 1;
+let totalPages = 1;
+let mapInstance = null;
+let isResolving = false;
+let isInitialLoad = true;
+
+// ================================================================
+//  SET DEFAULT DATE
+// ================================================================
+
+function setDefaultDates() {
+    const now = new Date();
+    const end = now.toISOString().split('T')[0];
+    const start = new Date(now);
+    start.setDate(start.getDate() - 7);
+    document.getElementById('startDate').value = start.toISOString().split('T')[0];
+    document.getElementById('endDate').value = end;
+}
+
+// ================================================================
+//  TOAST
+// ================================================================
+
+let toastTimeout = null;
+function showToast(msg, type = 'danger') {
+    const toast = document.getElementById('alertToast');
+    toast.textContent = msg;
+    toast.className = type + ' show';
+    clearTimeout(toastTimeout);
+    toastTimeout = setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => { toast.style.display = 'none'; }, 400);
+    }, 4000);
+    document.getElementById('ariaLive').textContent = msg;
+}
+
+// ================================================================
+//  SKELETON LOADER
+// ================================================================
+
+function showSkeleton(show) {
+    document.querySelectorAll('.stat-card').forEach(card => {
+        if (show) {
+            card.classList.add('loading');
+        } else {
+            card.classList.remove('loading');
+        }
+    });
+}
+
+// ================================================================
+//  LOGOUT
+// ================================================================
+
+function handleLogout() {
+    document.getElementById('confirmMessage').textContent = 'Apakah Anda yakin ingin keluar?';
+    document.getElementById('confirmModal').classList.add('active');
+}
+
+function confirmLogout() {
+    localStorage.removeItem(STORAGE_KEY);
+    closeConfirmModal();
+    window.location.href = 'index.html';
+}
+
+function closeConfirmModal() {
+    document.getElementById('confirmModal').classList.remove('active');
+}
+
+// ================================================================
+//  DROPDOWN
+// ================================================================
+
+function toggleDropdown() {
+    const menu = document.getElementById('dropdownMenu');
+    const expanded = !menu.classList.contains('active');
+    menu.classList.toggle('active');
+    document.getElementById('userProfile').setAttribute('aria-expanded', expanded);
+}
+
+document.getElementById('userProfile').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        toggleDropdown();
+    }
+});
+
+document.querySelectorAll('.filter-chip').forEach(chip => {
+    chip.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            const type = chip.getAttribute('data-filter');
+            filterAlerts(type);
+        }
+    });
+});
+
+document.addEventListener('click', (e) => {
+    const profile = document.getElementById('userProfile');
+    if (!profile.contains(e.target)) {
+        document.getElementById('dropdownMenu').classList.remove('active');
+        profile.setAttribute('aria-expanded', 'false');
+    }
+});
+
+// ================================================================
+//  LOAD DEVICES (dari Supabase)
+// ================================================================
+
+async function loadDevices() {
+    try {
+        const { data, error } = await supabase
+            .from('devices')
+            .select('id, name')
+            .eq('user_id', currentUser.id)
+            .order('name');
+
+        if (error) throw error;
+
+        const sel = document.getElementById('deviceSelect');
+        sel.innerHTML = '<option value="">Pilih Perangkat...</option>';
+        if (data && data.length) {
+            data.forEach(d => {
+                const opt = document.createElement('option');
+                opt.value = d.id;
+                opt.textContent = d.name + ' (' + d.id + ')';
+                sel.appendChild(opt);
+            });
+            sel.value = data[0]?.id || '';
+        } else {
+            sel.innerHTML += `<option value="" disabled>Tidak ada perangkat</option>`;
+        }
+
+        // Set user avatar
+        const avatar = document.getElementById('userAvatar');
+        avatar.textContent = (currentUser.name || 'U')[0].toUpperCase();
+
+        await loadGeofences();
+        showEmptyState();
+    } catch (e) {
+        console.warn('Gagal load devices:', e);
+        showToast('Gagal memuat daftar perangkat', 'danger');
+        const sel = document.getElementById('deviceSelect');
+        sel.innerHTML = '<option value="">Pilih Perangkat...</option><option value="" disabled>Error load devices</option>';
+        await loadGeofences();
+        showEmptyState();
+    }
+}
+
+function showEmptyState() {
+    resetStats();
+    rawHistory = [];
+    rawAlerts = [];
+    filteredAlerts = [];
+    renderCharts(rawHistory);
+    renderAlerts();
+    document.getElementById('alertCountBadge').textContent = '0 alert';
+    showSkeleton(false);
+    isInitialLoad = false;
+}
+
+// ================================================================
+//  LOAD GEOFENCE (dari Supabase)
+// ================================================================
+
+async function loadGeofences() {
+    const container = document.getElementById('geofenceListContainer');
+    container.innerHTML = '<div class="geofence-empty">Memuat geofence...</div>';
+    try {
+        const { data, error } = await supabase
+            .from('geofences')
+            .select('id, name, coordinates')
+            .eq('user_id', currentUser.id);
+
+        if (error) throw error;
+
+        if (data && data.length) {
+            geofencePolygons = data.map(g => ({
+                id: g.id,
+                name: g.name,
+                coordinates: g.coordinates || [],
+                type: 'polygon'
+            }));
+            renderGeofenceList(geofencePolygons);
+        } else {
+            geofencePolygons = [];
+            container.innerHTML = '<div class="geofence-empty">Belum ada geofence tersimpan.</div>';
+        }
+    } catch (e) {
+        console.warn('Gagal load geofence:', e);
+        geofencePolygons = [];
+        container.innerHTML = '<div class="geofence-empty">Gagal memuat geofence</div>';
+    }
+}
+
+function renderGeofenceList(geofences) {
+    const container = document.getElementById('geofenceListContainer');
+    if (!geofences || geofences.length === 0) {
+        container.innerHTML = '<div class="geofence-empty">Belum ada geofence tersimpan.</div>';
+        return;
+    }
+    let html = '<div class="geofence-items">';
+    geofences.forEach(g => {
+        html += `<span class="geofence-tag"><i class="fas fa-draw-polygon"></i> ${g.name}</span>`;
+    });
+    html += '</div>';
+    container.innerHTML = html;
+}
+
+// ================================================================
+//  POINT-IN-POLYGON
+// ================================================================
+
+function isPointInPolygon(lat, lng, polygon) {
+    let inside = false;
+    const pts = polygon.map(p => ({ lat: p.lat, lng: p.lng }));
+    for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+        const xi = pts[i].lat, yi = pts[i].lng;
+        const xj = pts[j].lat, yj = pts[j].lng;
+        const intersect = ((yi > lng) !== (yj > lng)) && (lat < (xj - xi) * (lng - yi) / (yj - yi) + xi);
+        if (intersect) inside = !inside;
+    }
+    return inside;
+}
+
+// ================================================================
+//  RESET FILTER
+// ================================================================
+
+function resetFilter() {
+    setDefaultDates();
+    document.getElementById('deviceSelect').value = '';
+    currentAlertFilter = 'all';
+    currentPage = 1;
+    document.querySelectorAll('.filter-chip').forEach(el => {
+        el.classList.remove('active');
+        el.setAttribute('aria-selected', 'false');
+    });
+    const allChip = document.querySelector('.filter-chip.all');
+    if (allChip) {
+        allChip.classList.add('active');
+        allChip.setAttribute('aria-selected', 'true');
+    }
+    showEmptyState();
+    showToast('Filter direset ke default', 'success');
+}
+
+function resetStats() {
+    document.getElementById('statDistance').textContent = '0 km';
+    document.getElementById('statFuel').textContent = '0 L';
+    document.getElementById('statEfficiency').textContent = '0 km/L';
+    document.getElementById('statTheft').textContent = '0';
+    document.getElementById('statSpeeding').textContent = '0';
+    document.getElementById('statGeofence').textContent = '0';
+    document.getElementById('statPoints').textContent = '0';
+    document.getElementById('statAlerts').textContent = '0';
+}
+
+// ================================================================
+//  APPLY FILTER
+// ================================================================
+
+function applyFilter() {
+    const deviceId = document.getElementById('deviceSelect').value;
+    const startDate = document.getElementById('startDate').value;
+    const endDate = document.getElementById('endDate').value;
+
+    if (!deviceId) {
+        showToast('Pilih perangkat terlebih dahulu', 'warning');
+        return;
+    }
+    if (!startDate || !endDate) {
+        showToast('Pilih rentang tanggal', 'warning');
+        return;
+    }
+    if (new Date(startDate) > new Date(endDate)) {
+        showToast('Tanggal mulai tidak boleh lebih besar dari tanggal akhir', 'warning');
+        return;
+    }
+
+    currentDevice = deviceId;
+    currentStartDate = startDate;
+    currentEndDate = endDate;
+    currentPage = 1;
+    loadAnalytics(deviceId, startDate, endDate);
+}
+
+// ================================================================
+//  LOAD ANALYTICS (dari Supabase)
+// ================================================================
+
+async function loadAnalytics(deviceId, startDate, endDate) {
+    showSkeleton(true);
+    resetStats();
+    document.getElementById('statPoints').textContent = '...';
+    document.getElementById('statAlerts').textContent = '...';
+
+    try {
+        // Query vehicle_data dari Supabase dengan filter device_id dan tanggal
+        const { data, error, count } = await supabase
+            .from('vehicle_data')
+            .select('*')
+            .eq('device_id', deviceId)
+            .gte('recorded_at', startDate)
+            .lte('recorded_at', endDate + 'T23:59:59')
+            .order('recorded_at', { ascending: true });
+
+        if (error) throw error;
+
+        let filtered = data || [];
+
+        if (filtered.length === 0) {
+            showToast('Tidak ada data untuk rentang yang dipilih', 'warning');
+            rawAlerts = [];
+            filteredAlerts = [];
+            renderCharts(rawHistory);
+            renderAlerts();
+            resetStats();
+            document.getElementById('alertCountBadge').textContent = '0 alert';
+            showSkeleton(false);
+            return;
+        }
+
+        // Konversi ke format yang digunakan oleh chart
+        rawHistory = filtered.map(h => ({
+            lat: h.lat || 0,
+            lng: h.lng || 0,
+            speed: h.speed || 0,
+            flow_rate: h.flow_rate || 0,
+            fuel_consumption: h.fuel_consumption || 0,
+            engine_status: h.engine_status || 0,
+            fuel_level: h.fuel_level || 100,
+            timestamp: Math.floor(new Date(h.recorded_at).getTime() / 1000),
+            time_str: new Date(h.recorded_at).toLocaleString()
+        }));
+
+        // Hitung statistik dan alert
+        const result = calculateStatsAndAlerts(rawHistory);
+
+        document.getElementById('statDistance').textContent = result.totalDistance.toFixed(2) + ' km';
+        document.getElementById('statFuel').textContent = result.totalFuel.toFixed(2) + ' L';
+        document.getElementById('statEfficiency').textContent = result.efficiency.toFixed(2) + ' km/L';
+        document.getElementById('statTheft').textContent = result.theftAlerts;
+        document.getElementById('statSpeeding').textContent = result.speedingAlerts;
+        document.getElementById('statGeofence').textContent = result.geofenceAlerts;
+        document.getElementById('statPoints').textContent = result.dataPoints;
+        document.getElementById('statAlerts').textContent = result.totalAlerts;
+
+        // Ambil alerts dari Supabase juga (untuk konsistensi)
+        const { data: alertsData, error: alertsError } = await supabase
+            .from('alerts')
+            .select('*')
+            .eq('device_id', deviceId)
+            .gte('created_at', startDate)
+            .lte('created_at', endDate + 'T23:59:59')
+            .order('created_at', { ascending: false });
+
+        if (!alertsError && alertsData) {
+            rawAlerts = alertsData.map(a => ({
+                ...a,
+                id: a.id.toString(),
+                type: a.type,
+                message: a.message,
+                is_resolved: a.is_resolved,
+                lat: a.lat,
+                lng: a.lng,
+                created_at: a.created_at,
+                timestamp: Math.floor(new Date(a.created_at).getTime() / 1000)
+            }));
+        } else {
+            // Fallback: gunakan alerts dari perhitungan
+            rawAlerts = result.alerts;
+        }
+
+        filteredAlerts = [...rawAlerts];
+        renderCharts(rawHistory);
+        renderAlerts();
+        document.getElementById('alertCountBadge').textContent = rawAlerts.length + ' alert';
+
+        document.getElementById('ariaLive').textContent = `Menampilkan ${rawHistory.length} data point dan ${rawAlerts.length} alert`;
+
+    } catch (e) {
+        console.error('Error load analytics:', e);
+        showToast('Gagal memuat data history: ' + e.message, 'danger');
+        rawHistory = [];
+        rawAlerts = [];
+        filteredAlerts = [];
+        renderCharts(rawHistory);
+        renderAlerts();
+        resetStats();
+        document.getElementById('alertCountBadge').textContent = '0 alert';
+    } finally {
+        showSkeleton(false);
+    }
+}
+
+// ================================================================
+//  HITUNG STATISTIK & ALERT
+// ================================================================
+
+function calculateStatsAndAlerts(history) {
+    if (!history || history.length < 2) {
+        return {
+            totalDistance: 0,
+            totalFuel: 0,
+            efficiency: 0,
+            theftAlerts: 0,
+            speedingAlerts: 0,
+            geofenceAlerts: 0,
+            dataPoints: history.length,
+            totalAlerts: 0,
+            alerts: []
+        };
+    }
+
+    let totalDist = 0;
+    let totalFuel = history[history.length - 1]?.fuel_consumption || 0;
+    let theftCount = 0;
+    let speedingCount = 0;
+    let geofenceCount = 0;
+    const alerts = [];
+    let alertCounter = 0;
+
+    for (let i = 1; i < history.length; i++) {
+        const curr = history[i];
+        const prev = history[i-1];
+
+        const d = haversine(prev.lat, prev.lng, curr.lat, curr.lng);
+        totalDist += d;
+
+        if (curr.speed > SPEED_LIMIT) {
+            speedingCount++;
+            if (!alerts.some(a => a.timestamp === curr.timestamp && a.type === 'speeding')) {
+                alertCounter++;
+                alerts.push({
+                    type: 'speeding',
+                    message: `Kecepatan ${curr.speed} km/h melebihi batas ${SPEED_LIMIT} km/h`,
+                    created_at: new Date(curr.timestamp * 1000).toISOString(),
+                    is_resolved: false,
+                    lat: curr.lat,
+                    lng: curr.lng,
+                    timestamp: curr.timestamp,
+                    id: `alert_${alertCounter}_${Date.now()}_${curr.timestamp}`
+                });
+            }
+        }
+
+        const fuelDrop = prev.fuel_level - curr.fuel_level;
+        if (fuelDrop > 5 && (curr.timestamp - prev.timestamp) < 120) {
+            theftCount++;
+            if (!alerts.some(a => a.timestamp === curr.timestamp && a.type === 'theft')) {
+                alertCounter++;
+                alerts.push({
+                    type: 'theft',
+                    message: `Penurunan BBM drastis (${fuelDrop.toFixed(1)}%) dalam ${(curr.timestamp - prev.timestamp)/60} menit`,
+                    created_at: new Date(curr.timestamp * 1000).toISOString(),
+                    is_resolved: false,
+                    lat: curr.lat,
+                    lng: curr.lng,
+                    timestamp: curr.timestamp,
+                    id: `alert_${alertCounter}_${Date.now()}_${curr.timestamp}`
+                });
+            }
+        }
+
+        let inAnyZone = true;
+        if (geofencePolygons.length > 0) {
+            inAnyZone = false;
+            for (const geo of geofencePolygons) {
+                if (geo.coordinates && geo.coordinates.length > 2) {
+                    if (isPointInPolygon(curr.lat, curr.lng, geo.coordinates)) {
+                        inAnyZone = true;
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (!inAnyZone) {
+            geofenceCount++;
+            if (!alerts.some(a => a.timestamp === curr.timestamp && a.type === 'geofence')) {
+                alertCounter++;
+                alerts.push({
+                    type: 'geofence',
+                    message: `Kendaraan keluar dari zona aman (${curr.lat.toFixed(4)}, ${curr.lng.toFixed(4)})`,
+                    created_at: new Date(curr.timestamp * 1000).toISOString(),
+                    is_resolved: false,
+                    lat: curr.lat,
+                    lng: curr.lng,
+                    timestamp: curr.timestamp,
+                    id: `alert_${alertCounter}_${Date.now()}_${curr.timestamp}`
+                });
+            }
+        }
+    }
+
+    totalFuel = history[history.length - 1]?.fuel_consumption || 0;
+    const efficiency = totalFuel > 0 ? totalDist / totalFuel : 0;
+
+    return {
+        totalDistance: totalDist,
+        totalFuel: totalFuel,
+        efficiency: efficiency,
+        theftAlerts: theftCount,
+        speedingAlerts: speedingCount,
+        geofenceAlerts: geofenceCount,
+        dataPoints: history.length,
+        totalAlerts: alerts.length,
+        alerts: alerts
+    };
+}
+
+function haversine(lat1, lon1, lat2, lon2) {
+    const R = 6371;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(dLat/2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon/2) ** 2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+// ================================================================
+//  FILTER ALERTS
+// ================================================================
+
+function filterAlerts(type) {
+    currentAlertFilter = type;
+    currentPage = 1;
+    document.querySelectorAll('.filter-chip').forEach(el => {
+        el.classList.remove('active');
+        el.setAttribute('aria-selected', 'false');
+    });
+    const chip = document.querySelector(`.filter-chip.${type}`);
+    if (chip) {
+        chip.classList.add('active');
+        chip.setAttribute('aria-selected', 'true');
+    }
+    
+    if (type === 'all') {
+        filteredAlerts = [...rawAlerts];
+    } else {
+        filteredAlerts = rawAlerts.filter(a => a.type === type);
+    }
+    renderAlerts();
+}
+
+// ================================================================
+//  PAGINATION
+// ================================================================
+
+function changePage(delta) {
+    const newPage = currentPage + delta;
+    if (newPage < 1 || newPage > totalPages) return;
+    currentPage = newPage;
+    renderAlerts();
+}
+
+function renderPagination() {
+    const total = filteredAlerts.length;
+    totalPages = Math.max(1, Math.ceil(total / ITEMS_PER_PAGE));
+    if (currentPage > totalPages) currentPage = totalPages;
+    
+    document.getElementById('pageInfo').textContent = `Halaman ${currentPage} dari ${totalPages}`;
+    document.getElementById('prevPage').disabled = currentPage <= 1;
+    document.getElementById('nextPage').disabled = currentPage >= totalPages;
+}
+
+// ================================================================
+//  RENDER ALERTS
+// ================================================================
+
+function renderAlerts() {
+    const tbody = document.getElementById('alertBody');
+    
+    if (!filteredAlerts || filteredAlerts.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#cbd5e0;padding:30px 0;">Tidak ada alert untuk filter ini</td></tr>';
+        renderPagination();
+        return;
+    }
+
+    const startIdx = (currentPage - 1) * ITEMS_PER_PAGE;
+    const endIdx = Math.min(startIdx + ITEMS_PER_PAGE, filteredAlerts.length);
+    const pageData = filteredAlerts.slice(startIdx, endIdx);
+
+    let html = '';
+    pageData.forEach((a, idx) => {
+        const typeClass = a.type || 'unknown';
+        const statusText = a.is_resolved ? 'Selesai' : 'Pending';
+        const statusClass = a.is_resolved ? 'resolved' : 'pending';
+        const time = a.created_at ? new Date(a.created_at).toLocaleString() : '-';
+        const loc = (a.lat && a.lng) ? `${a.lat.toFixed(4)}, ${a.lng.toFixed(4)}` : '-';
+        
+        const typeIcon = {
+            theft: '<i class="fas fa-bolt"></i>',
+            speeding: '<i class="fas fa-tachometer-alt"></i>',
+            geofence: '<i class="fas fa-draw-polygon"></i>'
+        }[a.type] || '<i class="fas fa-circle"></i>';
+
+        const resolveBtn = !a.is_resolved 
+            ? `<button class="btn-resolve" onclick="resolveAlert(${startIdx + idx})" data-index="${startIdx + idx}">Selesaikan</button>`
+            : `<span style="color:#4ade80;font-size:0.75rem;">✓ Selesai</span>`;
+
+        const mapLink = loc !== '-' 
+            ? `<a href="#" onclick="showMap(${a.lat}, ${a.lng}, '${a.message || 'Alert'}', '${a.type}'); return false;" style="color:#667eea;text-decoration:none;font-weight:500;min-height:44px;display:inline-flex;align-items:center;">Lihat Peta (${loc})</a>`
+            : loc;
+
+        html += `<tr class="fade-in">
+            <td data-label="Waktu">${time}</td>
+            <td data-label="Tipe"><span class="badge ${typeClass}">${typeIcon} ${typeClass.toUpperCase()}</span></td>
+            <td data-label="Pesan">${a.message || '-'}</td>
+            <td data-label="Lokasi">${mapLink}</td>
+            <td data-label="Status"><span class="badge ${statusClass}">${statusText}</span></td>
+            <td data-label="Aksi">${resolveBtn}</td>
+        </tr>`;
+    });
+    tbody.innerHTML = html;
+    renderPagination();
+}
+
+// ================================================================
+//  RESOLVE ALERT (ke Supabase)
+// ================================================================
+
+async function resolveAlert(index) {
+    if (isResolving) return;
+    
+    const realIndex = (currentPage - 1) * ITEMS_PER_PAGE + index;
+    if (realIndex >= filteredAlerts.length) return;
+    
+    const alert = filteredAlerts[realIndex];
+    if (alert.is_resolved) return;
+    
+    // Cari button dan set loading
+    const tbody = document.getElementById('alertBody');
+    const rows = tbody.querySelectorAll('tr');
+    const rowIndex = index;
+    if (rows[rowIndex]) {
+        const btn = rows[rowIndex].querySelector('.btn-resolve');
+        if (btn) {
+            btn.disabled = true;
+            btn.classList.add('loading');
+        }
+    }
+    
+    isResolving = true;
+    
+    try {
+        // Update di Supabase
+        const { error } = await supabase
+            .from('alerts')
+            .update({ 
+                is_resolved: true,
+                resolved_at: new Date().toISOString()
+            })
+            .eq('id', parseInt(alert.id));
+
+        if (error) throw error;
+
+        // Update local state
+        alert.is_resolved = true;
+        const rawIdx = rawAlerts.findIndex(a => a.id === alert.id);
+        if (rawIdx !== -1) {
+            rawAlerts[rawIdx].is_resolved = true;
+        }
+        
+        renderAlerts();
+        showToast('Alert berhasil diselesaikan!', 'success');
+        
+    } catch (error) {
+        console.error('Error resolving alert:', error);
+        showToast('Gagal menyelesaikan alert: ' + error.message, 'danger');
+        
+        // Rollback UI
+        alert.is_resolved = false;
+        const rawIdx = rawAlerts.findIndex(a => a.id === alert.id);
+        if (rawIdx !== -1) {
+            rawAlerts[rawIdx].is_resolved = false;
+        }
+        
+        if (rows[rowIndex]) {
+            const btn = rows[rowIndex].querySelector('.btn-resolve');
+            if (btn) {
+                btn.disabled = false;
+                btn.classList.remove('loading');
+            }
+        }
+    } finally {
+        isResolving = false;
+    }
+}
+
+// ================================================================
+//  MODAL PETA
+// ================================================================
+
+function showMap(lat, lng, message, type) {
+    const modal = document.getElementById('mapModal');
+    const container = document.getElementById('modalMapContainer');
+    const title = document.getElementById('modalTitle');
+    const subtitle = document.getElementById('modalSubtitle');
+    
+    if (!lat || !lng || isNaN(lat) || isNaN(lng)) {
+        showToast('Koordinat lokasi tidak valid', 'warning');
+        return;
+    }
+    
+    const typeLabels = {
+        theft: '🚨 Pencurian',
+        speeding: '⚡ Speeding',
+        geofence: '📍 Geofence'
+    };
+    const typeLabel = typeLabels[type] || 'Alert';
+    
+    title.textContent = `${typeLabel} - Lokasi Deteksi`;
+    subtitle.textContent = `Koordinat: ${lat.toFixed(6)}, ${lng.toFixed(6)} | ${message || ''}`;
+    
+    modal.classList.add('active');
+    document.body.style.overflow = 'hidden';
+    
+    if (mapInstance) {
+        mapInstance.remove();
+        mapInstance = null;
+    }
+    
+    container.innerHTML = '';
+    
+    requestAnimationFrame(() => {
+        try {
+            mapInstance = L.map(container, {
+                center: [lat, lng],
+                zoom: 15,
+                zoomControl: true
+            });
+            
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+            }).addTo(mapInstance);
+            
+            const marker = L.marker([lat, lng]).addTo(mapInstance);
+            const popupContent = `
+                <strong>${typeLabel}</strong><br>
+                ${message || 'Lokasi alert'}<br>
+                <small>${lat.toFixed(6)}, ${lng.toFixed(6)}</small>
+            `;
+            marker.bindPopup(popupContent).openPopup();
+            
+            setTimeout(() => {
+                if (mapInstance) {
+                    mapInstance.invalidateSize();
+                }
+            }, 100);
+        } catch (error) {
+            console.error('Error initializing map:', error);
+            showToast('Gagal memuat peta', 'danger');
+        }
+    });
+}
+
+function closeModal() {
+    const modal = document.getElementById('mapModal');
+    modal.classList.remove('active');
+    document.body.style.overflow = '';
+    if (mapInstance) {
+        mapInstance.remove();
+        mapInstance = null;
+    }
+}
+
+function closeModalOutside(event) {
+    if (event.target === event.currentTarget) {
+        closeModal();
+    }
+}
+
+// ================================================================
+//  CHART MANAGEMENT
+// ================================================================
+
+function updateChartType(chartId, type) {
+    chartTypes[chartId] = type;
+    if (rawHistory && rawHistory.length > 0) {
+        renderCharts(rawHistory);
+    }
+}
+
+function decimateData(data, maxPoints) {
+    if (data.length <= maxPoints) return data;
+    const step = Math.floor(data.length / maxPoints);
+    const result = [];
+    for (let i = 0; i < data.length; i += step) {
+        result.push(data[i]);
+    }
+    if (result[result.length - 1] !== data[data.length - 1]) {
+        result.push(data[data.length - 1]);
+    }
+    return result;
+}
+
+function initEmptyCharts() {
+    const commonOpts = {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: { labels: { color: '#cbd5e0', boxWidth: 10, padding: 8 } }
+        },
+        scales: {
+            x: { 
+                ticks: { color: '#cbd5e0', maxTicksLimit: 20 },
+                grid: { color: 'rgba(255,255,255,0.03)' } 
+            },
+            y: { 
+                ticks: { color: '#cbd5e0' },
+                grid: { color: 'rgba(255,255,255,0.03)' } 
+            }
+        }
+    };
+
+    const chartConfigs = [
+        { id: 'fuel', color: '#fbbf24', label: 'Fuel Level (%)', yScale: { min: 0, max: 100 } },
+        { id: 'flow', color: '#4ade80', label: 'Flow Rate (L/min)', isFlow: true },
+        { id: 'consumption', color: '#667eea', label: 'Konsumsi Kumulatif (L)' },
+        { id: 'engine', color: '#f87171', label: 'Engine Status (0=OFF, 1=ON)', yScale: { min: -0.5, max: 1.5, ticks: { stepSize: 1 } } }
+    ];
+
+    chartConfigs.forEach(cfg => {
+        const ctx = document.getElementById(cfg.id + 'Chart').getContext('2d');
+        let data = { labels: [], datasets: [] };
+        
+        if (cfg.isFlow) {
+            data.datasets = [
+                { label: 'Flow Rate (L/min)', data: [], borderColor: '#4ade80', yAxisID: 'y', tension: 0.3, pointRadius: 0 },
+                { label: 'Speed (km/h)', data: [], borderColor: '#667eea', yAxisID: 'y1', tension: 0.3, pointRadius: 0 }
+            ];
+        } else {
+            data.datasets = [{
+                label: cfg.label,
+                data: [],
+                borderColor: cfg.color,
+                backgroundColor: cfg.color + '11',
+                fill: true,
+                tension: 0.3,
+                pointRadius: 0
+            }];
+        }
+
+        let opts = { ...commonOpts };
+        if (cfg.yScale) {
+            opts.scales.y = { ...commonOpts.scales.y, ...cfg.yScale };
+        }
+        if (cfg.isFlow) {
+            opts.scales = {
+                x: commonOpts.scales.x,
+                y: { type: 'linear', display: true, position: 'left', ticks: { color: '#4ade80' }, grid: { color: 'rgba(255,255,255,0.03)' } },
+                y1: { type: 'linear', display: true, position: 'right', ticks: { color: '#667eea' }, grid: { drawOnChartArea: false } }
+            };
+        }
+
+        chartInstances[cfg.id] = new Chart(ctx, {
+            type: 'line',
+            data: data,
+            options: opts
+        });
+    });
+
+    document.querySelectorAll('.chart-box').forEach(el => el.classList.add('empty'));
+}
+
+function renderCharts(history) {
+    document.querySelectorAll('.chart-box').forEach(el => el.classList.remove('empty'));
+
+    if (!history || history.length === 0) {
+        Object.values(chartInstances).forEach(chart => {
+            chart.data.labels = [];
+            chart.data.datasets.forEach(ds => ds.data = []);
+            chart.update();
+        });
+        document.querySelectorAll('.chart-box').forEach(el => el.classList.add('empty'));
+        return;
+    }
+
+    let processedHistory = history;
+    if (history.length > MAX_DATA_POINTS) {
+        processedHistory = decimateData(history, MAX_DATA_POINTS);
+    }
+
+    const labels = processedHistory.map(h => h.time_str || new Date(h.timestamp * 1000).toLocaleString());
+    const fuelData = processedHistory.map(h => h.fuel_level || 0);
+    const flowData = processedHistory.map(h => h.flow_rate || 0);
+    const speedData = processedHistory.map(h => h.speed || 0);
+    const consumptionData = processedHistory.map(h => h.fuel_consumption || 0);
+    const engineData = processedHistory.map(h => h.engine_status || 0);
+
+    updateChart('fuel', labels, fuelData, '#fbbf24', 'Fuel Level (%)', chartTypes.fuel, false, { min: 0, max: 100 });
+    updateChart('flow', labels, flowData, '#4ade80', 'Flow Rate (L/min)', chartTypes.flow, false, null, speedData);
+    updateChart('consumption', labels, consumptionData, '#667eea', 'Konsumsi Kumulatif (L)', chartTypes.consumption, false);
+    updateChart('engine', labels, engineData, '#f87171', 'Engine Status (0=OFF, 1=ON)', chartTypes.engine, true, { min: -0.5, max: 1.5, ticks: { stepSize: 1 } });
+}
+
+function updateChart(chartId, labels, data, color, label, type, isStep, yScale, secondaryData) {
+    const chart = chartInstances[chartId];
+    if (!chart) return;
+
+    const isArea = type === 'area';
+    const isBar = type === 'bar';
+    const isScatter = type === 'scatter';
+    const isStepType = type === 'step';
+
+    let chartType = 'line';
+    if (isBar) chartType = 'bar';
+    else if (isScatter) chartType = 'scatter';
+    else if (isStepType) chartType = 'line';
+
+    chart.config.type = chartType;
+    chart.data.labels = labels;
+
+    if (secondaryData) {
+        chart.data.datasets[0] = {
+            ...chart.data.datasets[0],
+            data: data,
+            borderColor: '#4ade80',
+            backgroundColor: isArea ? '#4ade8033' : (isBar ? '#4ade8088' : '#4ade8011'),
+            fill: isArea,
+            tension: (isStep || isBar || isScatter) ? 0 : 0.3,
+            pointRadius: (isScatter) ? 3 : (isBar ? 0 : 1.5),
+            pointBackgroundColor: '#4ade80',
+            showLine: !(isScatter || isBar),
+            stepped: isStep ? 'before' : false,
+            borderWidth: (isBar || isScatter) ? 1 : 2,
+            yAxisID: 'y'
+        };
+        chart.data.datasets[1] = {
+            ...chart.data.datasets[1],
+            data: secondaryData,
+            borderColor: '#667eea',
+            backgroundColor: isArea ? '#667eea33' : (isBar ? '#667eea88' : '#667eea11'),
+            fill: isArea,
+            tension: (isStep || isBar || isScatter) ? 0 : 0.3,
+            pointRadius: (isScatter) ? 3 : (isBar ? 0 : 1.5),
+            pointBackgroundColor: '#667eea',
+            showLine: !(isScatter || isBar),
+            stepped: isStep ? 'before' : false,
+            borderWidth: (isBar || isScatter) ? 1 : 2,
+            yAxisID: 'y1'
+        };
+    } else {
+        chart.data.datasets[0] = {
+            ...chart.data.datasets[0],
+            label: label,
+            data: data,
+            borderColor: color,
+            backgroundColor: isArea ? color + '33' : (isBar ? color + '88' : color + '11'),
+            fill: isArea,
+            tension: (isStepType || isBar || isScatter) ? 0 : 0.3,
+            pointRadius: (isScatter) ? 3 : (isBar ? 0 : 1.5),
+            pointBackgroundColor: color,
+            showLine: !(isScatter || isBar),
+            stepped: isStepType ? 'before' : false,
+            borderWidth: (isBar || isScatter) ? 1 : 2
+        };
+    }
+
+    if (yScale) {
+        chart.options.scales.y = { ...chart.options.scales.y, ...yScale };
+    }
+
+    chart.update();
+    document.getElementById('ariaLive').textContent = `Chart ${chartId} diperbarui dengan ${labels.length} data point`;
+}
+
+// ================================================================
+//  RESIZE OBSERVER
+// ================================================================
+
+let resizeObserver = null;
+function setupResizeObserver() {
+    if (resizeObserver) {
+        resizeObserver.disconnect();
+    }
+    
+    resizeObserver = new ResizeObserver(() => {
+        Object.values(chartInstances).forEach(chart => {
+            if (chart && chart.resize) {
+                chart.resize();
+            }
+        });
+        if (mapInstance && mapInstance.invalidateSize) {
+            mapInstance.invalidateSize();
+        }
+    });
+    
+    const containers = document.querySelectorAll('.chart-box, .modal-map-container');
+    containers.forEach(container => {
+        resizeObserver.observe(container);
+    });
+}
+
+// ================================================================
+//  INIT
+// ================================================================
+
+document.addEventListener('DOMContentLoaded', () => {
+    setDefaultDates();
+    initEmptyCharts();
+    loadDevices();
+    setupResizeObserver();
+});
+
+// ===== KEYBOARD ACCESSIBILITY =====
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        if (document.getElementById('mapModal').classList.contains('active')) {
+            closeModal();
+        }
+        if (document.getElementById('confirmModal').classList.contains('active')) {
+            closeConfirmModal();
+        }
+        const dropdown = document.getElementById('dropdownMenu');
+        if (dropdown.classList.contains('active')) {
+            dropdown.classList.remove('active');
+            document.getElementById('userProfile').setAttribute('aria-expanded', 'false');
+        }
+    }
+});
+
+// ===== KEYBOARD SHORTCUT FOR APPLY FILTER (Ctrl+Enter) =====
+document.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+        applyFilter();
+    }
+});
+
+console.log('🚀 Fleet Tracker Analytics — Supabase Ready');
+console.log('📡 Supabase URL:', SUPABASE_URL);
+</script>
+</body>
+</html>

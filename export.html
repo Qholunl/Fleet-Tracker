@@ -1,0 +1,1660 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Fleet Tracker — Pusat Ekspor Data & Laporan</title>
+
+    <!-- ========== FONTS / LIBRARY ========== -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+
+    <!-- SheetJS untuk Excel -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- html2pdf untuk PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+    <!-- Supabase Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <style>
+        /* ============================================================
+           CSS VARIABLES (Identik dengan dashboard)
+           ============================================================ */
+        :root {
+            --bg-primary: #07080f;
+            --bg-card: rgba(12, 14, 28, 0.85);
+            --glass-border: 1px solid rgba(255, 255, 255, 0.06);
+            --glass-shadow: 0 12px 48px rgba(0, 0, 0, 0.6);
+            --text-primary: #f0f2fa;
+            --text-muted: #8892a8;
+            --accent-green: #4ade80;
+            --accent-red: #f87171;
+            --accent-yellow: #fbbf24;
+            --accent-blue: #667eea;
+            --accent-blue-glow: rgba(102, 126, 234, 0.25);
+            --radius: 14px;
+            --radius-sm: 8px;
+            --transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            --font: 'Inter', system-ui, -apple-system, sans-serif;
+            --scrollbar-track: rgba(255, 255, 255, 0.03);
+            --scrollbar-thumb: rgba(255, 255, 255, 0.12);
+        }
+
+        /* ============================================================
+           RESET & BASE
+           ============================================================ */
+        *,
+        *::before,
+        *::after {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        html,
+        body {
+            height: 100%;
+            font-family: var(--font);
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        body {
+            overflow-y: auto;
+            padding: 20px 16px 40px;
+        }
+
+        /* Scrollbar custom */
+        ::-webkit-scrollbar {
+            width: 4px;
+            height: 4px;
+        }
+        ::-webkit-scrollbar-track {
+            background: var(--scrollbar-track);
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: var(--scrollbar-thumb);
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.25);
+        }
+
+        /* ============================================================
+           LAYOUT UTAMA
+           ============================================================ */
+        .export-container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        /* ===== HEADER ===== */
+        .export-header {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px 16px;
+            padding: 16px 0 20px;
+            border-bottom: var(--glass-border);
+            margin-bottom: 28px;
+        }
+        .export-header-left {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        .btn-back {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(255, 255, 255, 0.04);
+            border: var(--glass-border);
+            border-radius: 40px;
+            color: var(--text-muted);
+            padding: 6px 16px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            text-decoration: none;
+            transition: background var(--transition), color var(--transition);
+            font-family: var(--font);
+            cursor: pointer;
+        }
+        .btn-back:hover {
+            background: rgba(255, 255, 255, 0.08);
+            color: #fff;
+        }
+        .btn-back i {
+            font-size: 0.7rem;
+        }
+        .btn-nav {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(255, 255, 255, 0.04);
+            border: var(--glass-border);
+            border-radius: 40px;
+            color: var(--text-muted);
+            padding: 6px 16px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            text-decoration: none;
+            transition: background var(--transition), color var(--transition);
+            font-family: var(--font);
+        }
+        .btn-nav:hover {
+            background: rgba(255, 255, 255, 0.08);
+            color: #fff;
+        }
+        .btn-nav i {
+            font-size: 0.7rem;
+        }
+        .btn-nav.history {
+            border-color: rgba(74, 222, 128, 0.3);
+        }
+        .btn-nav.analytics {
+            border-color: rgba(102, 126, 234, 0.3);
+        }
+
+        .export-header h1 {
+            font-size: 1.3rem;
+            font-weight: 700;
+            letter-spacing: -0.3px;
+            background: linear-gradient(135deg, #fff 60%, var(--accent-blue));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .export-header h1 i {
+            -webkit-text-fill-color: var(--accent-blue);
+            background: none;
+        }
+
+        .export-header-right {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .lang-selector {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            background: rgba(255, 255, 255, 0.05);
+            padding: 4px 10px;
+            border-radius: 40px;
+            font-size: 0.7rem;
+            border: var(--glass-border);
+        }
+        .lang-selector i {
+            font-size: 0.6rem;
+            opacity: 0.6;
+        }
+        .lang-selector select {
+            background: transparent;
+            border: none;
+            color: inherit;
+            font-size: 0.65rem;
+            font-weight: 500;
+            outline: none;
+            cursor: pointer;
+        }
+        .lang-selector select option {
+            background: #1a1a2e;
+            color: #fff;
+        }
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(255, 255, 255, 0.04);
+            border: var(--glass-border);
+            border-radius: 40px;
+            padding: 4px 14px 4px 10px;
+            font-size: 0.65rem;
+            font-weight: 500;
+        }
+        .status-badge .dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            display: inline-block;
+            background: var(--accent-green);
+            box-shadow: 0 0 8px var(--accent-green);
+        }
+
+        /* ============================================================
+           FILTER PANEL (GLASS CARD)
+           ============================================================ */
+        .filter-panel {
+            background: var(--bg-card);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: var(--glass-border);
+            border-radius: var(--radius);
+            padding: 20px 22px;
+            box-shadow: var(--glass-shadow);
+            margin-bottom: 28px;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: flex-end;
+            gap: 16px 24px;
+        }
+        .filter-group {
+            flex: 1 1 180px;
+            min-width: 160px;
+        }
+        .filter-group label {
+            display: block;
+            font-size: 0.6rem;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+            font-weight: 600;
+        }
+        .filter-group select,
+        .filter-group input {
+            width: 100%;
+            padding: 8px 10px;
+            background: rgba(255, 255, 255, 0.04);
+            border: var(--glass-border);
+            border-radius: var(--radius-sm);
+            color: #fff;
+            font-size: 0.75rem;
+            outline: none;
+            transition: border var(--transition), background var(--transition);
+            font-family: var(--font);
+        }
+        .filter-group select:focus,
+        .filter-group input:focus {
+            border-color: var(--accent-blue);
+            background: rgba(255, 255, 255, 0.08);
+            box-shadow: 0 0 0 3px var(--accent-blue-glow);
+        }
+        .filter-group select option {
+            background: #1a1a2e;
+            color: #fff;
+        }
+        .filter-group .quick-presets {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            margin-top: 4px;
+        }
+        .filter-group .quick-presets button {
+            padding: 3px 10px;
+            background: rgba(255, 255, 255, 0.04);
+            border: var(--glass-border);
+            border-radius: 40px;
+            color: var(--text-muted);
+            font-size: 0.6rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background var(--transition), color var(--transition);
+            font-family: var(--font);
+            flex: 1 0 auto;
+        }
+        .filter-group .quick-presets button:hover {
+            background: rgba(255, 255, 255, 0.08);
+            color: #fff;
+        }
+        .filter-group .quick-presets button.active {
+            background: var(--accent-blue);
+            color: #fff;
+            border-color: var(--accent-blue);
+        }
+        .filter-group .datetime-group {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+        .filter-group .datetime-group input {
+            flex: 1 1 100px;
+            min-width: 80px;
+        }
+
+        /* Checkbox group */
+        .checkbox-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px 16px;
+            align-items: center;
+            padding-top: 4px;
+        }
+        .checkbox-group label {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.7rem;
+            font-weight: 500;
+            color: var(--text-muted);
+            cursor: pointer;
+        }
+        .checkbox-group label input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            accent-color: var(--accent-blue);
+            cursor: pointer;
+            background: transparent;
+            border: var(--glass-border);
+            border-radius: 4px;
+        }
+
+        /* ============================================================
+           PREVIEW & EXPORT BUTTONS
+           ============================================================ */
+        .preview-area {
+            background: var(--bg-card);
+            backdrop-filter: blur(24px);
+            border: var(--glass-border);
+            border-radius: var(--radius);
+            padding: 20px 22px;
+            box-shadow: var(--glass-shadow);
+            margin-bottom: 28px;
+        }
+        .preview-header {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+        .preview-header h2 {
+            font-size: 1rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .preview-header h2 i {
+            color: var(--accent-blue);
+        }
+        .preview-header .info-note {
+            font-size: 0.65rem;
+            color: var(--text-muted);
+            background: rgba(255, 255, 255, 0.04);
+            padding: 4px 12px;
+            border-radius: 40px;
+            border: var(--glass-border);
+        }
+
+        /* Widget Stat */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+        .stat-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: var(--glass-border);
+            border-radius: var(--radius);
+            padding: 12px 14px;
+            text-align: center;
+        }
+        .stat-card .stat-value {
+            font-size: 1.2rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--accent-green), #86efac);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .stat-card .stat-value.danger {
+            background: linear-gradient(135deg, var(--accent-red), #fca5a5);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .stat-card .stat-value.warning {
+            background: linear-gradient(135deg, var(--accent-yellow), #fde047);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .stat-card .stat-label {
+            font-size: 0.55rem;
+            color: var(--text-muted);
+            margin-top: 4px;
+            font-weight: 500;
+        }
+
+        /* Tabel preview */
+        .table-wrap {
+            overflow-x: auto;
+            margin-top: 8px;
+            -webkit-overflow-scrolling: touch;
+        }
+        .table-wrap table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.7rem;
+            min-width: 600px;
+        }
+        .table-wrap th {
+            text-align: left;
+            padding: 8px 10px;
+            background: rgba(255, 255, 255, 0.04);
+            color: var(--text-muted);
+            font-weight: 600;
+            border-bottom: var(--glass-border);
+            white-space: nowrap;
+        }
+        .table-wrap td {
+            padding: 6px 10px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+            white-space: nowrap;
+        }
+        .table-wrap tr:last-child td {
+            border-bottom: none;
+        }
+        .table-wrap .badge {
+            display: inline-block;
+            padding: 1px 8px;
+            border-radius: 40px;
+            font-size: 0.55rem;
+            font-weight: 600;
+        }
+        .badge.green {
+            background: rgba(74, 222, 128, 0.15);
+            color: var(--accent-green);
+        }
+        .badge.red {
+            background: rgba(248, 113, 113, 0.15);
+            color: var(--accent-red);
+        }
+        .badge.yellow {
+            background: rgba(251, 191, 36, 0.15);
+            color: var(--accent-yellow);
+        }
+        .badge.blue {
+            background: rgba(102, 126, 234, 0.15);
+            color: var(--accent-blue);
+        }
+
+        .preview-footer {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-top: 16px;
+            padding-top: 14px;
+            border-top: var(--glass-border);
+        }
+        .preview-footer .sample-note {
+            font-size: 0.65rem;
+            color: var(--text-muted);
+        }
+
+        /* ===== EXPORT BUTTONS ===== */
+        .export-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+        .btn-export {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 24px;
+            border: none;
+            border-radius: var(--radius);
+            font-weight: 600;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: opacity var(--transition), transform 0.15s;
+            font-family: var(--font);
+            color: #fff;
+        }
+        .btn-export:active {
+            transform: scale(0.97);
+        }
+        .btn-export:hover {
+            opacity: 0.9;
+        }
+        .btn-export.excel {
+            background: linear-gradient(135deg, #22c55e, #16a34a);
+        }
+        .btn-export.pdf {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+        }
+        .btn-export i {
+            font-size: 1rem;
+        }
+        .btn-export:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* ============================================================
+           MODAL LOADING
+           ============================================================ */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(8px);
+            z-index: 9999;
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-overlay.active {
+            display: flex;
+        }
+        .modal-loading {
+            background: var(--bg-card);
+            backdrop-filter: blur(24px);
+            border: var(--glass-border);
+            border-radius: var(--radius);
+            padding: 32px 40px;
+            text-align: center;
+            max-width: 340px;
+            box-shadow: var(--glass-shadow);
+        }
+        .modal-loading .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid rgba(255, 255, 255, 0.1);
+            border-top-color: var(--accent-blue);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto 16px;
+        }
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+        .modal-loading p {
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: var(--text-muted);
+        }
+
+        /* ============================================================
+           TOAST NOTIFICATION
+           ============================================================ */
+        .toast-container {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            z-index: 10000;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            max-width: 360px;
+            width: 90%;
+        }
+        .toast {
+            background: var(--bg-card);
+            backdrop-filter: blur(16px);
+            border: var(--glass-border);
+            border-radius: var(--radius);
+            padding: 12px 16px;
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+            color: #fff;
+            font-size: 0.8rem;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            animation: slideUp 0.3s ease;
+        }
+        .toast.success {
+            border-left: 3px solid var(--accent-green);
+        }
+        .toast.error {
+            border-left: 3px solid var(--accent-red);
+        }
+        .toast i {
+            font-size: 1rem;
+        }
+        .toast.success i {
+            color: var(--accent-green);
+        }
+        .toast.error i {
+            color: var(--accent-red);
+        }
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(16px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* ============================================================
+           RESPONSIVE
+           ============================================================ */
+        @media (max-width: 820px) {
+            body {
+                padding: 14px 12px 30px;
+            }
+            .filter-panel {
+                padding: 16px;
+                gap: 12px;
+            }
+            .filter-group {
+                flex: 1 1 100%;
+                min-width: 120px;
+            }
+            .filter-group .datetime-group {
+                flex-direction: row;
+            }
+            .filter-group .datetime-group input {
+                flex: 1 1 80px;
+            }
+            .checkbox-group {
+                gap: 4px 12px;
+            }
+            .preview-area {
+                padding: 16px;
+            }
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .export-header h1 {
+                font-size: 1.1rem;
+            }
+            .btn-back {
+                font-size: 0.7rem;
+                padding: 4px 12px;
+            }
+            .modal-loading {
+                padding: 24px;
+                max-width: 280px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .stats-grid {
+                grid-template-columns: 1fr 1fr;
+                gap: 8px;
+            }
+            .stat-card .stat-value {
+                font-size: 1rem;
+            }
+            .export-actions {
+                flex-direction: column;
+                width: 100%;
+            }
+            .btn-export {
+                justify-content: center;
+                width: 100%;
+            }
+            .filter-group .quick-presets button {
+                font-size: 0.55rem;
+                padding: 2px 8px;
+            }
+            .table-wrap table {
+                font-size: 0.6rem;
+                min-width: 400px;
+            }
+            .table-wrap th,
+            .table-wrap td {
+                padding: 4px 6px;
+            }
+            .toast-container {
+                bottom: 16px;
+                right: 16px;
+                left: 16px;
+                width: auto;
+            }
+            .export-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 8px;
+            }
+            .export-header-right {
+                width: 100%;
+                justify-content: flex-start;
+            }
+        }
+
+        @media (max-width: 380px) {
+            .stats-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+            .filter-group .datetime-group input {
+                min-width: 60px;
+                font-size: 0.65rem;
+            }
+        }
+
+        /* ============================================================
+           UTILITY
+           ============================================================ */
+        .text-muted {
+            color: var(--text-muted);
+        }
+        .mt-8 {
+            margin-top: 8px;
+        }
+        .flex-wrap {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ============================================================
+    MODAL LOADING
+    ============================================================ -->
+    <div class="modal-overlay" id="loadingModal">
+        <div class="modal-loading">
+            <div class="spinner"></div>
+            <p>Memproses laporan... Mohon tunggu</p>
+        </div>
+    </div>
+
+    <!-- ============================================================
+    TOAST CONTAINER
+    ============================================================ -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- ============================================================
+    MAIN CONTENT
+    ============================================================ -->
+    <div class="export-container">
+
+        <!-- ===== HEADER ===== -->
+        <header class="export-header">
+            <div class="export-header-left">
+                <a href="dashboard.html" class="btn-back">
+                    <i class="fas fa-arrow-left"></i> Kembali ke Dashboard
+                </a>
+                <a href="history.html" class="btn-nav history">
+                    <i class="fas fa-history"></i> Riwayat Perjalanan
+                </a>
+                <a href="analytics.html" class="btn-nav analytics">
+                    <i class="fas fa-chart-line"></i> Analitik &amp; Metrik
+                </a>
+                <h1>
+                    <i class="fas fa-file-export"></i> Pusat Ekspor Data &amp; Laporan Fleet
+                </h1>
+            </div>
+            <div class="export-header-right">
+                <div class="lang-selector">
+                    <i class="fas fa-globe"></i>
+                    <select id="langSelect" onchange="changeLanguage(this.value)">
+                        <option value="id">🇮🇩 ID</option>
+                        <option value="en">🇬🇧 EN</option>
+                    </select>
+                </div>
+                <span class="status-badge">
+                    <span class="dot"></span> Sistem Siap
+                </span>
+            </div>
+        </header>
+
+        <!-- ===== FILTER PANEL ===== -->
+        <section class="filter-panel">
+            <!-- Device Selector -->
+            <div class="filter-group">
+                <label for="deviceSelect"><i class="fas fa-microchip"></i> Perangkat</label>
+                <select id="deviceSelect">
+                    <option value="all">Semua Perangkat</option>
+                    <!-- Opsi akan diisi oleh JS dari Supabase -->
+                </select>
+            </div>
+
+            <!-- Time Range -->
+            <div class="filter-group">
+                <label><i class="fas fa-calendar-alt"></i> Rentang Waktu</label>
+                <div class="quick-presets" id="quickPresets">
+                    <button data-range="today" class="active" data-i18n-key="today">Hari Ini</button>
+                    <button data-range="yesterday" data-i18n-key="yesterday">Kemarin</button>
+                    <button data-range="7days" data-i18n-key="seven_days">7 Hari</button>
+                    <button data-range="month" data-i18n-key="this_month">Bulan Ini</button>
+                </div>
+                <div class="datetime-group" style="margin-top:6px;">
+                    <input type="datetime-local" id="fromDate" />
+                    <span style="color:var(--text-muted);font-size:0.7rem;display:flex;align-items:center;">—</span>
+                    <input type="datetime-local" id="toDate" />
+                </div>
+            </div>
+
+            <!-- Komponen Data -->
+            <div class="filter-group" style="flex:2 1 280px;">
+                <label><i class="fas fa-list-ul"></i> Komponen Data</label>
+                <div class="checkbox-group">
+                    <label><input type="checkbox" id="chkHistory" checked /> Riwayat Perjalanan</label>
+                    <label><input type="checkbox" id="chkAnalytics" checked /> Analitik &amp; Metrik</label>
+                    <label><input type="checkbox" id="chkAlerts" checked /> Insiden &amp; Alert</label>
+                </div>
+            </div>
+        </section>
+
+        <!-- ===== PREVIEW AREA ===== -->
+        <section class="preview-area" id="previewArea">
+            <div class="preview-header">
+                <h2><i class="fas fa-eye"></i> Preview Ringkasan Laporan</h2>
+                <span class="info-note" id="previewNote">Menunggu data...</span>
+            </div>
+
+            <!-- Stat Ringkas -->
+            <div class="stats-grid" id="statsGrid">
+                <div class="stat-card">
+                    <div class="stat-value" id="statDistance">—</div>
+                    <div class="stat-label">Total Jarak</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="statDuration">—</div>
+                    <div class="stat-label">Durasi Operasional</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="statFuel">—</div>
+                    <div class="stat-label">Konsumsi BBM Est.</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value danger" id="statAlerts">—</div>
+                    <div class="stat-label">Jumlah Pelanggaran/Alert</div>
+                </div>
+            </div>
+
+            <!-- Tabel Preview -->
+            <div class="table-wrap">
+                <table id="previewTable">
+                    <thead>
+                        <tr>
+                            <th>Waktu</th>
+                            <th>Latitude</th>
+                            <th>Longitude</th>
+                            <th>Kecepatan (km/h)</th>
+                            <th>Status</th>
+                            <th>Alert</th>
+                        </tr>
+                    </thead>
+                    <tbody id="previewTableBody">
+                        <!-- diisi oleh JS -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Footer Preview -->
+            <div class="preview-footer">
+                <span class="sample-note" id="sampleNote">Data dapat dilihat pada halaman Riwayat atau Analitik</span>
+                <div class="export-actions">
+                    <button class="btn-export excel" id="btnExportExcel" onclick="exportExcel()">
+                        <i class="fas fa-file-excel"></i> Unduh Excel (.xlsx)
+                    </button>
+                    <button class="btn-export pdf" id="btnExportPDF" onclick="exportPDF()">
+                        <i class="fas fa-file-pdf"></i> Unduh PDF (.pdf)
+                    </button>
+                </div>
+            </div>
+        </section>
+
+    </div>
+
+    <!-- ============================================================
+    JAVASCRIPT
+    ============================================================ -->
+    <script>
+        // ================================================================
+        //  KONFIGURASI SUPABASE
+        // ================================================================
+        // Di Netlify, set SUPABASE_URL dan SUPABASE_ANON_KEY di Environment Variables
+        const SUPABASE_URL = window.SUPABASE_URL || 'https://your-project.supabase.co';
+        const SUPABASE_ANON_KEY = window.SUPABASE_ANON_KEY || 'your-anon-key';
+
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        // ================================================================
+        //  STORAGE & AUTH
+        // ================================================================
+        const STORAGE_KEY = 'fleet_current_user';
+
+        // ================================================================
+        //  CEK LOGIN
+        // ================================================================
+        const userData = localStorage.getItem(STORAGE_KEY);
+        if (!userData) {
+            window.location.href = 'index.html';
+            throw new Error('Unauthorized');
+        }
+        const currentUser = JSON.parse(userData);
+
+        // ================================================================
+        //  MULTI-BAHASA (I18n)
+        // ================================================================
+        const translations = {
+            id: {
+                system_ready: 'Sistem Siap',
+                export_center: 'Pusat Ekspor Data & Laporan Fleet',
+                back_dashboard: 'Kembali ke Dashboard',
+                device: 'Perangkat',
+                all_devices: 'Semua Perangkat',
+                time_range: 'Rentang Waktu',
+                today: 'Hari Ini',
+                yesterday: 'Kemarin',
+                seven_days: '7 Hari',
+                this_month: 'Bulan Ini',
+                components: 'Komponen Data',
+                history_log: 'Riwayat Perjalanan',
+                analytics_metrics: 'Analitik & Metrik',
+                incidents_alerts: 'Insiden & Alert',
+                preview_report: 'Preview Ringkasan Laporan',
+                loading_data: 'Menunggu data...',
+                total_distance: 'Total Jarak',
+                operational_duration: 'Durasi Operasional',
+                est_fuel_consumption: 'Konsumsi BBM Est.',
+                total_alerts: 'Jumlah Pelanggaran/Alert',
+                sample_data: 'Data dapat dilihat pada halaman Riwayat atau Analitik',
+                export_excel: 'Unduh Excel (.xlsx)',
+                export_pdf: 'Unduh PDF (.pdf)',
+                processing: 'Memproses laporan... Mohon tunggu',
+                export_success: 'File berhasil diunduh!',
+                export_error: 'Terjadi kesalahan saat mengekspor.',
+                no_data: 'Tidak ada data untuk periode ini.',
+            },
+            en: {
+                system_ready: 'System Ready',
+                export_center: 'Fleet Data Export Center & Reports',
+                back_dashboard: 'Back to Dashboard',
+                device: 'Device',
+                all_devices: 'All Devices',
+                time_range: 'Time Range',
+                today: 'Today',
+                yesterday: 'Yesterday',
+                seven_days: '7 Days',
+                this_month: 'This Month',
+                components: 'Data Components',
+                history_log: 'History Log',
+                analytics_metrics: 'Analytics & Metrics',
+                incidents_alerts: 'Incidents & Alerts',
+                preview_report: 'Report Preview',
+                loading_data: 'Waiting for data...',
+                total_distance: 'Total Distance',
+                operational_duration: 'Operational Duration',
+                est_fuel_consumption: 'Est. Fuel Consumption',
+                total_alerts: 'Total Alerts/Violations',
+                sample_data: 'Data available in History or Analytics pages',
+                export_excel: 'Download Excel (.xlsx)',
+                export_pdf: 'Download PDF (.pdf)',
+                processing: 'Processing report... Please wait',
+                export_success: 'File downloaded successfully!',
+                export_error: 'An error occurred during export.',
+                no_data: 'No data for this period.',
+            }
+        };
+
+        let currentLang = 'id';
+
+        function t(key) {
+            return translations[currentLang]?.[key] || translations.id[key] || key;
+        }
+
+        function changeLanguage(lang) {
+            currentLang = lang;
+            document.documentElement.lang = lang;
+            // Update UI elements
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                if (el.tagName === 'INPUT' && el.type === 'checkbox') {
+                    // skip
+                } else {
+                    el.textContent = t(key);
+                }
+            });
+            document.getElementById('previewNote').textContent = t('loading_data');
+            document.getElementById('sampleNote').textContent = t('sample_data');
+            document.querySelector('.status-badge span:last-child').textContent = t('system_ready');
+            document.querySelector('.export-header h1').innerHTML =
+                `<i class="fas fa-file-export"></i> ${t('export_center')}`;
+            document.querySelector('.btn-back span')?.textContent = t('back_dashboard');
+            // Update button text
+            const excelBtn = document.getElementById('btnExportExcel');
+            const pdfBtn = document.getElementById('btnExportPDF');
+            excelBtn.innerHTML = `<i class="fas fa-file-excel"></i> ${t('export_excel')}`;
+            pdfBtn.innerHTML = `<i class="fas fa-file-pdf"></i> ${t('export_pdf')}`;
+            // Update quick presets
+            document.querySelectorAll('#quickPresets button').forEach(btn => {
+                const key = btn.getAttribute('data-i18n-key');
+                if (key) btn.textContent = t(key);
+            });
+            // Update device label
+            const deviceLabel = document.querySelector('.filter-group label[for="deviceSelect"]');
+            if (deviceLabel) deviceLabel.innerHTML = `<i class="fas fa-microchip"></i> ${t('device')}`;
+        }
+
+        // ================================================================
+        //  STATE
+        // ================================================================
+        let currentRecords = [];
+        let currentAnalytics = null;
+        let currentDevice = 'all';
+        let fromDate = new Date();
+        let toDate = new Date();
+
+        // ================================================================
+        //  LOAD DEVICES (dari Supabase)
+        // ================================================================
+        async function loadDevices() {
+            try {
+                const { data, error } = await supabase
+                    .from('devices')
+                    .select('id, name')
+                    .eq('user_id', currentUser.id)
+                    .order('name');
+
+                if (error) throw error;
+
+                const sel = document.getElementById('deviceSelect');
+                sel.innerHTML = '<option value="all">Semua Perangkat</option>';
+                if (data && data.length) {
+                    data.forEach(d => {
+                        const opt = document.createElement('option');
+                        opt.value = d.id;
+                        opt.textContent = d.name + ' (' + d.id + ')';
+                        sel.appendChild(opt);
+                    });
+                } else {
+                    sel.innerHTML += '<option value="" disabled>Tidak ada perangkat</option>';
+                }
+            } catch (e) {
+                console.warn('Gagal load devices:', e);
+                const sel = document.getElementById('deviceSelect');
+                sel.innerHTML = '<option value="all">Semua Perangkat</option><option value="" disabled>Error load devices</option>';
+                showToast('Gagal memuat daftar perangkat', 'error');
+            }
+        }
+
+        // ================================================================
+        //  UI REFRESH
+        // ================================================================
+        function updatePreview() {
+            // Ambil filter
+            const device = document.getElementById('deviceSelect').value;
+            const chkHistory = document.getElementById('chkHistory').checked;
+            const chkAnalytics = document.getElementById('chkAnalytics').checked;
+            const chkAlerts = document.getElementById('chkAlerts').checked;
+
+            // Parse datetime
+            const fromVal = document.getElementById('fromDate').value;
+            const toVal = document.getElementById('toDate').value;
+            if (fromVal) fromDate = new Date(fromVal);
+            if (toVal) toDate = new Date(toVal);
+
+            currentDevice = device;
+
+            // Reset data
+            currentRecords = [];
+            currentAnalytics = {
+                totalDistance: 0,
+                durationHours: 0,
+                fuelConsumed: 0,
+                maxSpeed: 0,
+                avgSpeed: 0,
+                idleTime: 0,
+                alertsCount: 0,
+                overspeedCount: 0,
+                geofenceCount: 0,
+                fuelTheftCount: 0,
+            };
+
+            // Update stat cards
+            document.getElementById('statDistance').textContent = '—';
+            document.getElementById('statDuration').textContent = '—';
+            document.getElementById('statFuel').textContent = '—';
+            document.getElementById('statAlerts').textContent = '—';
+
+            // Update preview note
+            const deviceName = device === 'all' ? 'Semua Perangkat' : document.querySelector(`#deviceSelect option[value="${device}"]`)
+                ?.textContent || device;
+            document.getElementById('previewNote').textContent =
+                `Silakan buka halaman Riwayat atau Analitik untuk melihat data ${deviceName}`;
+
+            // Update table dengan pesan
+            const tbody = document.getElementById('previewTableBody');
+            tbody.innerHTML = `
+                        <tr>
+                            <td colspan="6" style="text-align:center;padding:20px;color:var(--text-muted);">
+                                <i class="fas fa-info-circle" style="margin-right:8px;"></i>
+                                Data tidak tersedia di sini. Kunjungi 
+                                <a href="history.html" style="color:var(--accent-green);text-decoration:underline;">Riwayat Perjalanan</a> 
+                                atau 
+                                <a href="analytics.html" style="color:var(--accent-blue);text-decoration:underline;">Analitik &amp; Metrik</a> 
+                                untuk melihat data lengkap.
+                            </td>
+                        </tr>
+                    `;
+
+            // Disable export buttons if no data
+            document.getElementById('btnExportExcel').disabled = true;
+            document.getElementById('btnExportPDF').disabled = true;
+        }
+
+        // ================================================================
+        //  QUICK PRESETS
+        // ================================================================
+        function applyPreset(range) {
+            const now = new Date();
+            let from = new Date();
+            let to = new Date();
+
+            switch (range) {
+                case 'today':
+                    from.setHours(0, 0, 0, 0);
+                    to.setHours(23, 59, 59, 999);
+                    break;
+                case 'yesterday':
+                    from.setDate(now.getDate() - 1);
+                    from.setHours(0, 0, 0, 0);
+                    to.setDate(now.getDate() - 1);
+                    to.setHours(23, 59, 59, 999);
+                    break;
+                case '7days':
+                    from.setDate(now.getDate() - 7);
+                    from.setHours(0, 0, 0, 0);
+                    to.setHours(23, 59, 59, 999);
+                    break;
+                case 'month':
+                    from.setDate(1);
+                    from.setHours(0, 0, 0, 0);
+                    to.setHours(23, 59, 59, 999);
+                    break;
+                default:
+                    return;
+            }
+            document.getElementById('fromDate').value = from.toISOString().slice(0, 16);
+            document.getElementById('toDate').value = to.toISOString().slice(0, 16);
+            document.querySelectorAll('#quickPresets button').forEach(b => b.classList.remove('active'));
+            document.querySelector(`#quickPresets button[data-range="${range}"]`)?.classList.add('active');
+            updatePreview();
+        }
+
+        // ================================================================
+        //  TOAST & LOADING
+        // ================================================================
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.innerHTML = `
+                        <i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'}"></i>
+                        <span>${message}</span>
+                    `;
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateX(20px)';
+                setTimeout(() => toast.remove(), 400);
+            }, 4000);
+        }
+
+        function showLoading(show) {
+            document.getElementById('loadingModal').classList.toggle('active', show);
+        }
+
+        // ================================================================
+        //  FETCH DATA DARI SUPABASE
+        // ================================================================
+        async function fetchDataForExport() {
+            const device = document.getElementById('deviceSelect').value;
+            const fromVal = document.getElementById('fromDate').value;
+            const toVal = document.getElementById('toDate').value;
+
+            if (!fromVal || !toVal) {
+                showToast('Pilih rentang waktu terlebih dahulu', 'error');
+                return null;
+            }
+
+            // Konversi ke format date untuk query
+            const fromDateStr = fromVal.split('T')[0];
+            const toDateStr = toVal.split('T')[0];
+
+            try {
+                let query = supabase
+                    .from('vehicle_data')
+                    .select('*')
+                    .gte('recorded_at', fromDateStr)
+                    .lte('recorded_at', toDateStr + 'T23:59:59')
+                    .order('recorded_at', { ascending: true });
+
+                // Filter device jika bukan "all"
+                if (device !== 'all') {
+                    query = query.eq('device_id', device);
+                }
+
+                const { data, error } = await query;
+
+                if (error) throw error;
+
+                return data || [];
+
+            } catch (e) {
+                console.error('Error fetching data:', e);
+                showToast('Gagal mengambil data: ' + e.message, 'error');
+                return null;
+            }
+        }
+
+        // ================================================================
+        //  HAVERSINE
+        // ================================================================
+        function haversine(lat1, lon1, lat2, lon2) {
+            const R = 6371;
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) **
+                2;
+            return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        }
+
+        // ================================================================
+        //  EKSPOR EXCEL
+        // ================================================================
+        async function exportExcel() {
+            const chkHistory = document.getElementById('chkHistory').checked;
+            const chkAnalytics = document.getElementById('chkAnalytics').checked;
+            const chkAlerts = document.getElementById('chkAlerts').checked;
+
+            showLoading(true);
+
+            try {
+                const rawData = await fetchDataForExport();
+                if (!rawData || rawData.length === 0) {
+                    showLoading(false);
+                    showToast(t('no_data'), 'error');
+                    return;
+                }
+
+                const records = rawData.map(h => ({
+                    timestamp: h.recorded_at ? new Date(h.recorded_at) : new Date(),
+                    lat: h.lat || 0,
+                    lng: h.lng || 0,
+                    speed: h.speed || 0,
+                    flow_rate: h.flow_rate || 0,
+                    fuel_consumption: h.fuel_consumption || 0,
+                    engine_status: h.engine_status || 0,
+                    fuel_level: h.fuel_level || 100,
+                    status: h.engine_status == 1 ? 'HIDUP' : 'MATI',
+                    alert: h.alert || 'Normal',
+                    isAlert: h.isAlert || false,
+                }));
+
+                // Hitung analitik
+                let totalDist = 0;
+                let maxSpeed = 0;
+                let sumSpeed = 0;
+                let fuelConsumed = records.length > 0 ? records[records.length - 1].fuel_consumption : 0;
+                let alertsCount = records.filter(r => r.isAlert).length;
+                let engineOnCount = records.filter(r => r.engine_status == 1).length;
+
+                for (let i = 1; i < records.length; i++) {
+                    const d = haversine(records[i - 1].lat, records[i - 1].lng, records[i].lat, records[i].lng);
+                    totalDist += d;
+                    if (records[i].speed > maxSpeed) maxSpeed = records[i].speed;
+                    sumSpeed += records[i].speed;
+                }
+                const avgSpeed = records.length > 0 ? sumSpeed / records.length : 0;
+                const durationHours = records.length > 0 ? (records[records.length - 1].timestamp - records[0].timestamp) / (
+                    3600 * 1000) : 0;
+
+                const analytics = {
+                    totalDistance: totalDist,
+                    durationHours: durationHours,
+                    fuelConsumed: fuelConsumed,
+                    maxSpeed: maxSpeed,
+                    avgSpeed: avgSpeed,
+                    idleTime: records.length - engineOnCount,
+                    alertsCount: alertsCount,
+                    overspeedCount: records.filter(r => r.speed > 80).length,
+                    geofenceCount: records.filter(r => r.alert && r.alert.includes('Geofence')).length,
+                    fuelTheftCount: records.filter(r => r.alert && r.alert.includes('Fuel')).length,
+                };
+
+                const wb = XLSX.utils.book_new();
+
+                // Sheet 1: Ringkasan Performa
+                if (chkAnalytics) {
+                    const analyticsData = [
+                        { 'Metrik': 'Total Jarak (km)', 'Nilai': analytics.totalDistance.toFixed(2) },
+                        { 'Metrik': 'Durasi Operasional (jam)', 'Nilai': analytics.durationHours.toFixed(1) },
+                        { 'Metrik': 'Konsumsi BBM (L)', 'Nilai': analytics.fuelConsumed.toFixed(2) },
+                        { 'Metrik': 'Kecepatan Maksimum (km/h)', 'Nilai': analytics.maxSpeed.toFixed(1) },
+                        { 'Metrik': 'Kecepatan Rata-rata (km/h)', 'Nilai': analytics.avgSpeed.toFixed(1) },
+                        { 'Metrik': 'Waktu Idle (jam)', 'Nilai': analytics.idleTime.toFixed(1) },
+                        { 'Metrik': 'Jumlah Alert', 'Nilai': analytics.alertsCount },
+                        { 'Metrik': 'Overspeed', 'Nilai': analytics.overspeedCount },
+                        { 'Metrik': 'Geofence Breach', 'Nilai': analytics.geofenceCount },
+                        { 'Metrik': 'Fuel Theft Indication', 'Nilai': analytics.fuelTheftCount },
+                    ];
+                    const ws1 = XLSX.utils.json_to_sheet(analyticsData);
+                    XLSX.utils.book_append_sheet(wb, ws1, 'Ringkasan Performa');
+                }
+
+                // Sheet 2: Log Riwayat GPS
+                if (chkHistory && records.length > 0) {
+                    const historyData = records.map(r => ({
+                        'Waktu': r.timestamp.toLocaleString(),
+                        'Latitude': r.lat,
+                        'Longitude': r.lng,
+                        'Kecepatan (km/h)': r.speed,
+                        'Status': r.status,
+                        'Alert': r.alert,
+                    }));
+                    const ws2 = XLSX.utils.json_to_sheet(historyData);
+                    XLSX.utils.book_append_sheet(wb, ws2, 'Log Riwayat GPS');
+                }
+
+                // Sheet 3: Insiden & Alert
+                if (chkAlerts && records.filter(r => r.isAlert).length > 0) {
+                    const alerts = records.filter(r => r.isAlert).map(r => ({
+                        'Waktu': r.timestamp.toLocaleString(),
+                        'Latitude': r.lat,
+                        'Longitude': r.lng,
+                        'Kecepatan (km/h)': r.speed,
+                        'Jenis Alert': r.alert,
+                        'Status': r.status,
+                    }));
+                    const ws3 = XLSX.utils.json_to_sheet(alerts);
+                    XLSX.utils.book_append_sheet(wb, ws3, 'Catatan Insiden');
+                } else if (chkAlerts) {
+                    const ws3 = XLSX.utils.json_to_sheet([{ 'Pesan': 'Tidak ada insiden pada periode ini' }]);
+                    XLSX.utils.book_append_sheet(wb, ws3, 'Catatan Insiden');
+                }
+
+                const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+                const blob = new Blob([wbout], { type: 'application/octet-stream' });
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                const deviceName = currentDevice === 'all' ? 'semua' : currentDevice;
+                const dateStr = new Date().toISOString().slice(0, 10);
+                link.download = `laporan_fleet_${deviceName}_${dateStr}.xlsx`;
+                link.click();
+                URL.revokeObjectURL(link.href);
+                showToast(t('export_success'), 'success');
+            } catch (e) {
+                console.error(e);
+                showToast(t('export_error'), 'error');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        // ================================================================
+        //  EKSPOR PDF
+        // ================================================================
+        async function exportPDF() {
+            const chkHistory = document.getElementById('chkHistory').checked;
+            const chkAnalytics = document.getElementById('chkAnalytics').checked;
+            const chkAlerts = document.getElementById('chkAlerts').checked;
+
+            showLoading(true);
+
+            try {
+                const rawData = await fetchDataForExport();
+                if (!rawData || rawData.length === 0) {
+                    showLoading(false);
+                    showToast(t('no_data'), 'error');
+                    return;
+                }
+
+                const records = rawData.map(h => ({
+                    timestamp: h.recorded_at ? new Date(h.recorded_at) : new Date(),
+                    lat: h.lat || 0,
+                    lng: h.lng || 0,
+                    speed: h.speed || 0,
+                    flow_rate: h.flow_rate || 0,
+                    fuel_consumption: h.fuel_consumption || 0,
+                    engine_status: h.engine_status || 0,
+                    fuel_level: h.fuel_level || 100,
+                    status: h.engine_status == 1 ? 'HIDUP' : 'MATI',
+                    alert: h.alert || 'Normal',
+                    isAlert: h.isAlert || false,
+                }));
+
+                // Hitung analitik (sama seperti di exportExcel)
+                let totalDist = 0;
+                let maxSpeed = 0;
+                let sumSpeed = 0;
+                let fuelConsumed = records.length > 0 ? records[records.length - 1].fuel_consumption : 0;
+                let alertsCount = records.filter(r => r.isAlert).length;
+                let engineOnCount = records.filter(r => r.engine_status == 1).length;
+
+                for (let i = 1; i < records.length; i++) {
+                    const d = haversine(records[i - 1].lat, records[i - 1].lng, records[i].lat, records[i].lng);
+                    totalDist += d;
+                    if (records[i].speed > maxSpeed) maxSpeed = records[i].speed;
+                    sumSpeed += records[i].speed;
+                }
+                const avgSpeed = records.length > 0 ? sumSpeed / records.length : 0;
+                const durationHours = records.length > 0 ? (records[records.length - 1].timestamp - records[0].timestamp) / (
+                    3600 * 1000) : 0;
+
+                const analytics = {
+                    totalDistance: totalDist,
+                    durationHours: durationHours,
+                    fuelConsumed: fuelConsumed,
+                    maxSpeed: maxSpeed,
+                    avgSpeed: avgSpeed,
+                    idleTime: records.length - engineOnCount,
+                    alertsCount: alertsCount,
+                    overspeedCount: records.filter(r => r.speed > 80).length,
+                    geofenceCount: records.filter(r => r.alert && r.alert.includes('Geofence')).length,
+                    fuelTheftCount: records.filter(r => r.alert && r.alert.includes('Fuel')).length,
+                };
+
+                const deviceName = currentDevice === 'all' ? 'Semua Perangkat' : document.querySelector(
+                    `#deviceSelect option[value="${currentDevice}"]`)
+                    ?.textContent || currentDevice;
+                const now = new Date().toLocaleString();
+
+                let htmlContent = `
+                            <div style="font-family: 'Inter', sans-serif; padding: 20px; color: #f0f2fa; background: #07080f;">
+                                <div style="border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 12px; margin-bottom: 16px;">
+                                    <h1 style="font-size: 24px; font-weight: 700; color: #f0f2fa; letter-spacing: -0.5px;">FLEET TRACKER SYSTEM REPORT</h1>
+                                    <div style="display: flex; flex-wrap: wrap; gap: 12px 24px; font-size: 13px; color: #8892a8; margin-top: 8px;">
+                                        <span><strong>Perangkat:</strong> ${deviceName}</span>
+                                        <span><strong>Periode:</strong> ${fromDate.toLocaleDateString()} - ${toDate.toLocaleDateString()}</span>
+                                        <span><strong>Diunduh:</strong> ${now}</span>
+                                        <span><strong>Diunduh Oleh:</strong> ${currentUser.name || 'Admin'}</span>
+                                    </div>
+                                </div>
+                                <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px;">
+                                    <div style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.06); border-radius: 8px; padding: 12px; text-align: center;">
+                                        <div style="font-size: 20px; font-weight: 700; color: #4ade80;">${analytics.totalDistance.toFixed(2)} km</div>
+                                        <div style="font-size: 11px; color: #8892a8;">Total Jarak</div>
+                                    </div>
+                                    <div style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.06); border-radius: 8px; padding: 12px; text-align: center;">
+                                        <div style="font-size: 20px; font-weight: 700; color: #4ade80;">${analytics.durationHours.toFixed(1)} jam</div>
+                                        <div style="font-size: 11px; color: #8892a8;">Durasi Operasional</div>
+                                    </div>
+                                    <div style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.06); border-radius: 8px; padding: 12px; text-align: center;">
+                                        <div style="font-size: 20px; font-weight: 700; color: #fbbf24;">${analytics.fuelConsumed.toFixed(2)} L</div>
+                                        <div style="font-size: 11px; color: #8892a8;">Konsumsi BBM Est.</div>
+                                    </div>
+                                    <div style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.06); border-radius: 8px; padding: 12px; text-align: center;">
+                                        <div style="font-size: 20px; font-weight: 700; color: #f87171;">${analytics.alertsCount}</div>
+                                        <div style="font-size: 11px; color: #8892a8;">Total Pelanggaran</div>
+                                    </div>
+                                </div>
+                        `;
+
+                if (chkAnalytics) {
+                    htmlContent += `
+                                <div style="margin-bottom: 20px;">
+                                    <h2 style="font-size: 16px; font-weight: 600; color: #f0f2fa; margin-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 6px;">Ringkasan Analitik</h2>
+                                    <table style="width: 100%; border-collapse: collapse; font-size: 12px; color: #f0f2fa;">
+                                        <tr style="border-bottom: 1px solid rgba(255,255,255,0.06);">
+                                            <th style="text-align: left; padding: 6px 8px; color: #8892a8;">Metrik</th>
+                                            <th style="text-align: right; padding: 6px 8px; color: #8892a8;">Nilai</th>
+                                        </tr>
+                                        <tr><td style="padding: 4px 8px;">Kecepatan Maksimum</td><td style="text-align: right; padding: 4px 8px;">${analytics.maxSpeed.toFixed(1)} km/h</td></tr>
+                                        <tr><td style="padding: 4px 8px;">Kecepatan Rata-rata</td><td style="text-align: right; padding: 4px 8px;">${analytics.avgSpeed.toFixed(1)} km/h</td></tr>
+                                        <tr><td style="padding: 4px 8px;">Waktu Idle</td><td style="text-align: right; padding: 4px 8px;">${analytics.idleTime.toFixed(1)} jam</td></tr>
+                                        <tr><td style="padding: 4px 8px;">Overspeed</td><td style="text-align: right; padding: 4px 8px;">${analytics.overspeedCount}</td></tr>
+                                        <tr><td style="padding: 4px 8px;">Geofence Breach</td><td style="text-align: right; padding: 4px 8px;">${analytics.geofenceCount}</td></tr>
+                                        <tr><td style="padding: 4px 8px;">Fuel Theft Indication</td><td style="text-align: right; padding: 4px 8px;">${analytics.fuelTheftCount}</td></tr>
+                                    </table>
+                                </div>
+                            `;
+                }
+
+                if (chkHistory && records.length > 0) {
+                    const historyData = records.slice(-20).reverse();
+                    htmlContent += `
+                                <div style="margin-bottom: 20px;">
+                                    <h2 style="font-size: 16px; font-weight: 600; color: #f0f2fa; margin-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 6px;">Log Riwayat Perjalanan (20 terbaru)</h2>
+                                    <table style="width: 100%; border-collapse: collapse; font-size: 10px; color: #f0f2fa;">
+                                        <tr style="border-bottom: 1px solid rgba(255,255,255,0.06);">
+                                            <th style="text-align: left; padding: 4px 6px; color: #8892a8;">Waktu</th>
+                                            <th style="text-align: right; padding: 4px 6px; color: #8892a8;">Lat</th>
+                                            <th style="text-align: right; padding: 4px 6px; color: #8892a8;">Lng</th>
+                                            <th style="text-align: right; padding: 4px 6px; color: #8892a8;">Speed</th>
+                                            <th style="text-align: left; padding: 4px 6px; color: #8892a8;">Status</th>
+                                            <th style="text-align: left; padding: 4px 6px; color: #8892a8;">Alert</th>
+                                        </tr>
+                                `;
+                    historyData.forEach(r => {
+                        htmlContent += `
+                                    <tr style="border-bottom: 1px solid rgba(255,255,255,0.04);">
+                                        <td style="padding: 4px 6px;">${r.timestamp.toLocaleString()}</td>
+                                        <td style="text-align: right; padding: 4px 6px;">${r.lat}</td>
+                                        <td style="text-align: right; padding: 4px 6px;">${r.lng}</td>
+                                        <td style="text-align: right; padding: 4px 6px;">${r.speed}</td>
+                                        <td style="padding: 4px 6px;">${r.status}</td>
+                                        <td style="padding: 4px 6px;">${r.isAlert ? r.alert : 'Normal'}</td>
+                                    </tr>
+                                `;
+                    });
+                    htmlContent += `</table></div>`;
+                }
+
+                if (chkAlerts && records.filter(r => r.isAlert).length > 0) {
+                    const alerts = records.filter(r => r.isAlert);
+                    htmlContent += `
+                                <div style="margin-bottom: 20px;">
+                                    <h2 style="font-size: 16px; font-weight: 600; color: #f0f2fa; margin-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 6px;">Catatan Insiden & Alert</h2>
+                                    <table style="width: 100%; border-collapse: collapse; font-size: 10px; color: #f0f2fa;">
+                                        <tr style="border-bottom: 1px solid rgba(255,255,255,0.06);">
+                                            <th style="text-align: left; padding: 4px 6px; color: #8892a8;">Waktu</th>
+                                            <th style="text-align: right; padding: 4px 6px; color: #8892a8;">Lat</th>
+                                            <th style="text-align: right; padding: 4px 6px; color: #8892a8;">Lng</th>
+                                            <th style="text-align: right; padding: 4px 6px; color: #8892a8;">Speed</th>
+                                            <th style="text-align: left; padding: 4px 6px; color: #8892a8;">Jenis Alert</th>
+                                        </tr>
+                                `;
+                    alerts.forEach(r => {
+                        htmlContent += `
+                                        <tr style="border-bottom: 1px solid rgba(255,255,255,0.04);">
+                                            <td style="padding: 4px 6px;">${r.timestamp.toLocaleString()}</td>
+                                            <td style="text-align: right; padding: 4px 6px;">${r.lat}</td>
+                                            <td style="text-align: right; padding: 4px 6px;">${r.lng}</td>
+                                            <td style="text-align: right; padding: 4px 6px;">${r.speed}</td>
+                                            <td style="padding: 4px 6px;">${r.alert}</td>
+                                        </tr>
+                                    `;
+                    });
+                    htmlContent += `</table></div>`;
+                }
+
+                htmlContent += `</div>`;
+
+                const opt = {
+                    margin: 0.5,
+                    filename: `laporan_fleet_${currentDevice === 'all' ? 'semua' : currentDevice}_${new Date().toISOString().slice(0, 10)}.pdf`,
+                    image: { type: 'jpeg', quality: 0.98 },
+                    html2canvas: { scale: 2, useCORS: true, letterRendering: true },
+                    jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' },
+                    pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+                };
+
+                const element = document.createElement('div');
+                element.innerHTML = htmlContent;
+                element.style.position = 'absolute';
+                element.style.left = '-9999px';
+                element.style.top = '0';
+                element.style.width = '700px';
+                document.body.appendChild(element);
+
+                html2pdf().set(opt).from(element).save().then(() => {
+                    document.body.removeChild(element);
+                    showToast(t('export_success'), 'success');
+                    showLoading(false);
+                }).catch((err) => {
+                    console.error(err);
+                    document.body.removeChild(element);
+                    showToast(t('export_error'), 'error');
+                    showLoading(false);
+                });
+
+            } catch (e) {
+                console.error(e);
+                showToast(t('export_error'), 'error');
+                showLoading(false);
+            }
+        }
+
+        // ================================================================
+        //  INITIALIZATION
+        // ================================================================
+        document.addEventListener('DOMContentLoaded', function() {
+            // Set default date range (today)
+            const now = new Date();
+            const todayStart = new Date(now);
+            todayStart.setHours(0, 0, 0, 0);
+            const todayEnd = new Date(now);
+            todayEnd.setHours(23, 59, 59, 999);
+
+            document.getElementById('fromDate').value = todayStart.toISOString().slice(0, 16);
+            document.getElementById('toDate').value = todayEnd.toISOString().slice(0, 16);
+
+            // Event listeners
+            document.getElementById('deviceSelect').addEventListener('change', updatePreview);
+            document.getElementById('fromDate').addEventListener('change', updatePreview);
+            document.getElementById('toDate').addEventListener('change', updatePreview);
+            document.getElementById('chkHistory').addEventListener('change', updatePreview);
+            document.getElementById('chkAnalytics').addEventListener('change', updatePreview);
+            document.getElementById('chkAlerts').addEventListener('change', updatePreview);
+
+            // Quick presets
+            document.querySelectorAll('#quickPresets button').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    applyPreset(this.getAttribute('data-range'));
+                });
+            });
+
+            // Load devices from Supabase
+            loadDevices().then(() => {
+                // Set language
+                changeLanguage('id');
+                // Update preview
+                updatePreview();
+                // Enable export buttons
+                document.getElementById('btnExportExcel').disabled = false;
+                document.getElementById('btnExportPDF').disabled = false;
+            });
+
+            // Toast informatif
+            setTimeout(() => {
+                showToast('Gunakan filter untuk menyesuaikan data yang akan diekspor.', 'success');
+            }, 500);
+
+            console.log('🚀 Fleet Tracker Export — Supabase Ready');
+            console.log('📡 Supabase URL:', SUPABASE_URL);
+        });
+    </script>
+
+</body>
+</html>

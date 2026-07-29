@@ -1,0 +1,17 @@
+{
+  "name": "fleet-backend",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.78.0",
+    "dotenv": "^17.4.2",
+    "mqtt": "^5.15.2"
+  },
+  "description": ""
+}
