@@ -5,6 +5,9 @@ header("Content-Type: application/json; charset=UTF-8");
 header("Access-Control-Allow-Methods: GET, POST, DELETE, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type, Authorization");
 
+// Set timezone ke WIB (opsional)
+date_default_timezone_set('Asia/Jakarta');
+
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(200);
     exit(0);
@@ -32,7 +35,7 @@ try {
     exit;
 }
 
-// Fungsi helper response
+// ========== FUNGSI HELPER ==========
 function sendJson($data, $code = 200) {
     http_response_code($code);
     echo json_encode($data);
@@ -42,4 +45,7 @@ function sendJson($data, $code = 200) {
 function getInput() {
     return json_decode(file_get_contents('php://input'), true) ?? [];
 }
+
+// ========== KONSTANTA API (Opsional) ==========
+define('API_BASE', 'https://fleet-tracker.wuaze.com/api/');
 ?>
