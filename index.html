@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        /* (CSS SAMA PERSIS SEPERTI SEBELUMNYA, tidak diubah) */
+        /* (CSS SAMA PERSIS SEPERTI SEBELUMNYA) */
         * {
             margin: 0;
             padding: 0;
@@ -404,21 +404,21 @@
 
     <script>
         // ================================================================
-        // 1. KONFIGURASI SUPABASE (gunakan environment variable dari Netlify)
+        // 1. KONFIGURASI SUPABASE — SUDAH DIISI DENGAN KEY BENAR
         // ================================================================
-        // Di Netlify, set SUPABASE_URL dan SUPABASE_ANON_KEY di Environment Variables
-        const SUPABASE_URL = window.SUPABASE_URL || 'https://gapcqlcqowmhcpzbqygr.supabase.co';
-        // ⚠️ PERHATIAN: Ganti dengan ANON KEY yang benar (bukan service_role key)
-        const SUPABASE_ANON_KEY = window.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdhcGNxbGNxb3dtaGNwemJxeWdyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUxNjc4NTcsImV4cCI6MjEwMDc0Mzg1N30.UnMBcPNcvzXj9v_JgsJktQ5iYmdXXDJnOYuJX1ZcWXQ';
+        const SUPABASE_URL = 'https://gapcqlcqowmhcpzbqygr.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdhcGNxbGNxb3dtaGNwemJxeWdyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUxNjc4NTcsImV4cCI6MjEwMDc0Mzg1N30.UnMBcPNcvzXj9v_JgsJktQ5iYmdXXDJnOYuJX1ZcWXQ';
 
         // ================================================================
-        // 2. VALIDASI KEY (peringatan jika masih placeholder)
+        // 2. VALIDASI SEDERHANA (hanya peringatan di console, bukan alert)
         // ================================================================
-        if (SUPABASE_ANON_KEY.includes('sb_secret') || SUPABASE_ANON_KEY === 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdhcGNxbGNxb3dtaGNwemJxeWdyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUxNjc4NTcsImV4cCI6MjEwMDc0Mzg1N30.UnMBcPNcvzXj9v_JgsJktQ5iYmdXXDJnOYuJX1ZcWXQ') {
-            console.error('❌ SUPABASE_ANON_KEY masih menggunakan placeholder atau service_role key!');
-            alert('⚠️ Konfigurasi Supabase salah!\n\n' +
-                  'Ganti SUPABASE_ANON_KEY dengan "anon public" key dari dashboard.\n' +
-                  'Jangan gunakan "service_role" key di frontend.');
+        if (!SUPABASE_URL || SUPABASE_URL.includes('your-project')) {
+            console.error('❌ SUPABASE_URL salah!');
+        }
+        if (!SUPABASE_ANON_KEY || SUPABASE_ANON_KEY.length < 20 || SUPABASE_ANON_KEY.includes('sb_secret')) {
+            console.error('❌ SUPABASE_ANON_KEY salah! Gunakan anon public key.');
+        } else {
+            console.log('✅ Konfigurasi Supabase valid.');
         }
 
         // Inisialisasi Supabase Client
@@ -746,7 +746,7 @@
 
             console.log('🚀 Fleet Tracker Login — Ready');
             console.log('📡 Supabase URL:', SUPABASE_URL);
-            console.log('🔑 Anon Key (pertama 10 char):', SUPABASE_ANON_KEY.substring(0, 10) + '...');
+            console.log('🔑 Anon Key (first 10 chars):', SUPABASE_ANON_KEY.substring(0, 10) + '...');
         });
     </script>
 </body>
