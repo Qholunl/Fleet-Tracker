@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        /* (CSS SAMA PERSIS SEPERTI SEBELUMNYA) */
+        /* (CSS SAMA PERSIS SEPERTI SEBELUMNYA, tidak diubah) */
         * {
             margin: 0;
             padding: 0;
@@ -404,16 +404,28 @@
 
     <script>
         // ================================================================
-        // 1. KONFIGURASI SUPABASE (GANTI DENGAN MILIK ANDA)
+        // 1. KONFIGURASI SUPABASE (gunakan environment variable dari Netlify)
         // ================================================================
-        const SUPABASE_URL = 'https://your-project.supabase.co';   // <-- GANTI
-        const SUPABASE_ANON_KEY = 'your-anon-key';                 // <-- GANTI
+        // Di Netlify, set SUPABASE_URL dan SUPABASE_ANON_KEY di Environment Variables
+        const SUPABASE_URL = window.SUPABASE_URL || 'https://gapcqlcqowmhcpzbqygr.supabase.co';
+        // ⚠️ PERHATIAN: Ganti dengan ANON KEY yang benar (bukan service_role key)
+        const SUPABASE_ANON_KEY = window.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdhcGNxbGNxb3dtaGNwemJxeWdyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MDAwMDAwMDAsImV4cCI6MjAwMDAwMDAwMH0.xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx';
 
-        // Gunakan nama variabel yang unik untuk menghindari konflik
+        // ================================================================
+        // 2. VALIDASI KEY (peringatan jika masih placeholder)
+        // ================================================================
+        if (SUPABASE_ANON_KEY.includes('sb_secret') || SUPABASE_ANON_KEY === 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdhcGNxbGNxb3dtaGNwemJxeWdyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MDAwMDAwMDAsImV4cCI6MjAwMDAwMDAwMH0.xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx') {
+            console.error('❌ SUPABASE_ANON_KEY masih menggunakan placeholder atau service_role key!');
+            alert('⚠️ Konfigurasi Supabase salah!\n\n' +
+                  'Ganti SUPABASE_ANON_KEY dengan "anon public" key dari dashboard.\n' +
+                  'Jangan gunakan "service_role" key di frontend.');
+        }
+
+        // Inisialisasi Supabase Client
         const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         // ================================================================
-        // 2. DOM REFS
+        // 3. DOM REFS
         // ================================================================
         const errorDiv = document.getElementById('errorMsg');
         const successDiv = document.getElementById('successMsg');
@@ -435,7 +447,7 @@
         }
 
         // ================================================================
-        // 3. SWITCH TAB (fungsi global, dipanggil dari event listener)
+        // 4. SWITCH TAB
         // ================================================================
         function switchTab(tab) {
             document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
@@ -449,7 +461,7 @@
         }
 
         // ================================================================
-        // 4. FULLSCREEN
+        // 5. FULLSCREEN
         // ================================================================
         const fullscreenToggle = document.getElementById('fullscreenToggle');
         const fullscreenIcon = document.getElementById('fullscreenIcon');
@@ -474,7 +486,7 @@
         document.addEventListener('webkitfullscreenchange', updateFullscreenIcon);
 
         // ================================================================
-        // 5. LOADING STATE
+        // 6. LOADING STATE
         // ================================================================
         function setLoading(btn, loading) {
             btn.classList.toggle('loading', loading);
@@ -482,10 +494,9 @@
         }
 
         // ================================================================
-        // 6. FUNGSI BANTU: CREATE PROFILE & SETTINGS
+        // 7. CREATE PROFILE & SETTINGS
         // ================================================================
         async function createProfileAndSettings(userId, name, username, email) {
-            // Cek apakah profile sudah ada
             const { data: existing, error: checkError } = await supabaseClient
                 .from('profiles')
                 .select('user_id')
@@ -501,7 +512,6 @@
                 return { profileError: null, settingsError: null };
             }
 
-            // Insert profile
             const { error: profileError } = await supabaseClient
                 .from('profiles')
                 .insert([{
@@ -522,7 +532,6 @@
                 }
             }
 
-            // Insert settings (opsional)
             const { error: settingsError } = await supabaseClient
                 .from('settings')
                 .insert([{
@@ -540,7 +549,7 @@
         }
 
         // ================================================================
-        // 7. REGISTER
+        // 8. REGISTER
         // ================================================================
         async function registerUser(e) {
             e.preventDefault();
@@ -605,6 +614,7 @@
                 let msg = err.message;
                 if (msg.includes('already registered')) msg = 'Email sudah terdaftar, silakan login.';
                 else if (msg.includes('duplicate key') || msg.includes('unique constraint')) msg = 'Username sudah digunakan, pilih yang lain.';
+                else if (msg.includes('Failed to fetch')) msg = 'Gagal terhubung ke Supabase. Periksa URL dan koneksi internet.';
                 showError('Registrasi gagal: ' + msg);
             } finally {
                 setLoading(btn, false);
@@ -612,7 +622,7 @@
         }
 
         // ================================================================
-        // 8. LOGIN
+        // 9. LOGIN
         // ================================================================
         async function loginUser(e) {
             e.preventDefault();
@@ -676,6 +686,7 @@
                 console.error('❌ Login error:', err);
                 let msg = err.message;
                 if (msg.includes('Invalid login credentials')) msg = 'Email atau password salah.';
+                else if (msg.includes('Failed to fetch')) msg = 'Gagal terhubung ke Supabase. Periksa URL dan koneksi internet.';
                 showError('Login gagal: ' + msg);
             } finally {
                 setLoading(btn, false);
@@ -683,11 +694,10 @@
         }
 
         // ================================================================
-        // 9. PASANG EVENT LISTENER SETELAH DOM SIAP
+        // 10. EVENT LISTENERS
         // ================================================================
         document.addEventListener('DOMContentLoaded', function() {
 
-            // Tab switching via klik pada .auth-tab
             document.querySelectorAll('.auth-tab').forEach(tab => {
                 tab.addEventListener('click', function(e) {
                     switchTab(this.dataset.tab);
@@ -700,7 +710,6 @@
                 });
             });
 
-            // Link "Daftar di sini" dan "Login di sini"
             document.getElementById('switchToRegisterLink').addEventListener('click', function(e) {
                 e.preventDefault();
                 switchTab('register');
@@ -710,14 +719,11 @@
                 switchTab('login');
             });
 
-            // Form submit
             document.getElementById('loginFormElement').addEventListener('submit', loginUser);
             document.getElementById('registerFormElement').addEventListener('submit', registerUser);
 
-            // Auto-focus
             document.getElementById('loginEmail')?.focus();
 
-            // Escape untuk menyembunyikan pesan
             document.addEventListener('keydown', function(e) {
                 if (e.key === 'Escape') {
                     errorDiv.style.display = 'none';
@@ -725,7 +731,7 @@
                 }
             });
 
-            // Cek session (redirect jika sudah login)
+            // Redirect jika sudah login
             const raw = localStorage.getItem('fleet_current_user');
             if (raw) {
                 try {
@@ -740,6 +746,7 @@
 
             console.log('🚀 Fleet Tracker Login — Ready');
             console.log('📡 Supabase URL:', SUPABASE_URL);
+            console.log('🔑 Anon Key (pertama 10 char):', SUPABASE_ANON_KEY.substring(0, 10) + '...');
         });
     </script>
 </body>
