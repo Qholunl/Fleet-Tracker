@@ -1,14 +1,14 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
     <title>Fleet Tracker Login</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Supabase Client -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <!-- Supabase Client v2 -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        /* (CSS tidak berubah, tetap sama seperti sebelumnya) */
+        /* ===== CSS SAMA SEPERTI SEBELUMNYA ===== */
         * {
             margin: 0;
             padding: 0;
@@ -298,7 +298,6 @@
             letter-spacing: 0.3px;
             z-index: 999;
         }
-
         @media (max-width: 768px) {
             .auth-card {
                 flex-direction: column;
@@ -458,21 +457,18 @@
     <div class="badge-version">Fleet Tracker v2.0 • Supabase</div>
 
     <script>
-        // ===================================================================
-        //  KONFIGURASI SUPABASE (dari environment variables Netlify atau fallback)
-        // ===================================================================
-        // Di Netlify, variabel lingkungan akan tersedia di window (jika di-inject)
-        // atau bisa juga menggunakan import.meta.env jika menggunakan Vite.
-        // Untuk keamanan, sebaiknya gunakan environment variables yang di-set di Netlify.
-        const SUPABASE_URL = window.SUPABASE_URL || 'https://your-project.supabase.co';
-        const SUPABASE_ANON_KEY = window.SUPABASE_ANON_KEY || 'your-anon-key';
+        // ================================================================
+        //  ⚙️ KONFIGURASI SUPABASE — GANTI DENGAN MILIK ANDA
+        // ================================================================
+        const SUPABASE_URL = 'https://your-project.supabase.co';   // <-- GANTI
+        const SUPABASE_ANON_KEY = 'your-anon-key';                 // <-- GANTI
 
         // Inisialisasi Supabase Client
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-        // ===================================================================
+        // ================================================================
         //  DOM REFS
-        // ===================================================================
+        // ================================================================
         const errorDiv = document.getElementById('errorMsg');
         const successDiv = document.getElementById('successMsg');
 
@@ -481,7 +477,7 @@
             errorDiv.style.display = 'block';
             successDiv.style.display = 'none';
             clearTimeout(errorDiv._hide);
-            errorDiv._hide = setTimeout(() => { errorDiv.style.display = 'none'; }, 5000);
+            errorDiv._hide = setTimeout(() => { errorDiv.style.display = 'none'; }, 6000);
         }
 
         function showSuccess(msg) {
@@ -489,108 +485,109 @@
             successDiv.style.display = 'block';
             errorDiv.style.display = 'none';
             clearTimeout(successDiv._hide);
-            successDiv._hide = setTimeout(() => { successDiv.style.display = 'none'; }, 5000);
+            successDiv._hide = setTimeout(() => { successDiv.style.display = 'none'; }, 6000);
         }
 
-        // ===================================================================
+        // ================================================================
         //  SWITCH TAB
-        // ===================================================================
+        // ================================================================
         function switchTab(tab) {
             document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
-            const targetTab = document.querySelector(`.auth-tab[data-tab="${tab}"]`);
-            if (targetTab) targetTab.classList.add('active');
+            const target = document.querySelector(`.auth-tab[data-tab="${tab}"]`);
+            if (target) target.classList.add('active');
 
-            const loginForm = document.getElementById('loginForm');
-            const registerForm = document.getElementById('registerForm');
-            loginForm.classList.toggle('active', tab === 'login');
-            registerForm.classList.toggle('active', tab === 'register');
-
+            document.getElementById('loginForm').classList.toggle('active', tab === 'login');
+            document.getElementById('registerForm').classList.toggle('active', tab === 'register');
             errorDiv.style.display = 'none';
             successDiv.style.display = 'none';
-            document.querySelectorAll('.form-group input').forEach(inp => {
-                inp.style.borderColor = '';
-            });
         }
 
         document.querySelectorAll('.auth-tab').forEach(tab => {
-            tab.addEventListener('click', () => {
-                switchTab(tab.getAttribute('data-tab'));
-            });
+            tab.addEventListener('click', () => switchTab(tab.dataset.tab));
             tab.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault();
-                    switchTab(tab.getAttribute('data-tab'));
+                    switchTab(tab.dataset.tab);
                 }
             });
         });
 
-        // ===================================================================
+        // ================================================================
         //  FULLSCREEN
-        // ===================================================================
+        // ================================================================
         const fullscreenToggle = document.getElementById('fullscreenToggle');
         const fullscreenIcon = document.getElementById('fullscreenIcon');
 
         function toggleFullscreen() {
-            if (!document.fullscreenElement && !document.webkitFullscreenElement && !document.msFullscreenElement) {
+            if (!document.fullscreenElement && !document.webkitFullscreenElement) {
                 const elem = document.documentElement;
                 if (elem.requestFullscreen) elem.requestFullscreen();
                 else if (elem.webkitRequestFullscreen) elem.webkitRequestFullscreen();
-                else if (elem.msRequestFullscreen) elem.msRequestFullscreen();
             } else {
                 if (document.exitFullscreen) document.exitFullscreen();
                 else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
-                else if (document.msExitFullscreen) document.msExitFullscreen();
             }
         }
 
         function updateFullscreenIcon() {
-            if (document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement) {
-                fullscreenIcon.className = 'fas fa-compress';
-            } else {
-                fullscreenIcon.className = 'fas fa-expand';
-            }
+            fullscreenIcon.className = (document.fullscreenElement || document.webkitFullscreenElement) ?
+                'fas fa-compress' : 'fas fa-expand';
         }
-
         fullscreenToggle.addEventListener('click', toggleFullscreen);
         document.addEventListener('fullscreenchange', updateFullscreenIcon);
         document.addEventListener('webkitfullscreenchange', updateFullscreenIcon);
-        document.addEventListener('msfullscreenchange', updateFullscreenIcon);
 
-        // ===================================================================
+        // ================================================================
         //  LOADING STATE
-        // ===================================================================
+        // ================================================================
         function setLoading(btn, loading) {
-            if (loading) {
-                btn.classList.add('loading');
-                btn.disabled = true;
-            } else {
-                btn.classList.remove('loading');
-                btn.disabled = false;
-            }
+            btn.classList.toggle('loading', loading);
+            btn.disabled = loading;
         }
 
-        // ===================================================================
-        //  FUNGSI BANTU UNTUK MEMBUAT PROFILE & SETTINGS
-        // ===================================================================
-        async function createUserProfile(userId, name, username, email) {
-            // Insert ke tabel profiles
+        // ================================================================
+        //  FUNGSI BANTU: CREATE PROFILE & SETTINGS
+        // ================================================================
+        async function createProfileAndSettings(userId, name, username, email) {
+            // Cek apakah profile sudah ada (untuk menghindari duplicate)
+            const { data: existing, error: checkError } = await supabase
+                .from('profiles')
+                .select('user_id')
+                .eq('user_id', userId)
+                .maybeSingle();
+
+            if (checkError && checkError.code !== 'PGRST116') {
+                console.warn('⚠️ Gagal cek profile:', checkError);
+            }
+
+            if (existing) {
+                console.log('ℹ️ Profile sudah ada, skip insert.');
+                return { profileError: null, settingsError: null };
+            }
+
+            // Insert profile
             const { error: profileError } = await supabase
                 .from('profiles')
                 .insert([{
                     user_id: userId,
                     name: name,
                     username: username,
-                    email: email, // opsional, bisa juga diambil dari auth.users
+                    email: email,
                     created_at: new Date().toISOString(),
                     updated_at: new Date().toISOString()
                 }]);
 
             if (profileError) {
-                console.error('Gagal insert profile:', profileError);
-                throw new Error('Gagal menyimpan data profil.');
+                console.error('❌ Profile insert error:', profileError);
+                // Jika error karena duplicate, anggap sudah ada
+                if (profileError.code === '23505') {
+                    console.log('ℹ️ Profile mungkin sudah ada (duplicate), lanjutkan.');
+                } else {
+                    throw new Error('Gagal menyimpan profile: ' + profileError.message);
+                }
             }
 
-            // Insert ke tabel settings (default)
+            // Insert settings (opsional)
             const { error: settingsError } = await supabase
                 .from('settings')
                 .insert([{
@@ -601,16 +598,19 @@
                 }]);
 
             if (settingsError) {
-                console.error('Gagal insert settings:', settingsError);
-                // Tidak throw, karena settings bisa dianggap opsional
+                console.warn('⚠️ Settings insert error (non-fatal):', settingsError);
+                // Tidak throw, karena settings tidak kritis
             }
+
+            return { profileError, settingsError };
         }
 
-        // ===================================================================
-        //  REGISTER (dengan Supabase Auth + insert profile & settings)
-        // ===================================================================
+        // ================================================================
+        //  REGISTER
+        // ================================================================
         async function registerUser(e) {
             e.preventDefault();
+
             const name = document.getElementById('regName').value.trim();
             const email = document.getElementById('regEmail').value.trim();
             const username = document.getElementById('regUsername').value.trim();
@@ -637,9 +637,11 @@
             }
 
             setLoading(btn, true);
+            console.log('⏳ Memulai registrasi untuk:', email);
 
             try {
-                // 1. Daftarkan user ke Supabase Auth
+                // 1. Sign up dengan Supabase Auth
+                console.log('📤 Mencoba signUp...');
                 const { data: authData, error: authError } = await supabase.auth.signUp({
                     email: email,
                     password: password,
@@ -651,18 +653,23 @@
                     }
                 });
 
-                if (authError) throw authError;
+                if (authError) {
+                    console.error('❌ Auth error:', authError);
+                    throw new Error(authError.message);
+                }
 
                 if (!authData.user) {
-                    throw new Error('Gagal membuat akun, coba lagi.');
+                    throw new Error('User tidak terbuat, respons kosong.');
                 }
 
                 const userId = authData.user.id;
+                console.log('✅ User terbuat, ID:', userId);
 
-                // 2. Insert ke tabel profiles dan settings secara manual
-                await createUserProfile(userId, name, username, email);
+                // 2. Buat profile dan settings
+                console.log('📝 Membuat profile dan settings...');
+                await createProfileAndSettings(userId, name, username, email);
 
-                // 3. Simpan user ke localStorage
+                // 3. Simpan ke localStorage
                 localStorage.setItem('fleet_current_user', JSON.stringify({
                     id: userId,
                     name: name,
@@ -675,22 +682,22 @@
                 setTimeout(() => window.location.href = 'dashboard.html', 1500);
 
             } catch (err) {
-                console.error('Register error:', err);
-                if (err.message.includes('already registered')) {
-                    showError('Email sudah terdaftar, silakan login.');
-                } else if (err.message.includes('duplicate key value')) {
-                    showError('Username sudah digunakan, pilih username lain.');
-                } else {
-                    showError('Registrasi gagal: ' + (err.message || 'Terjadi kesalahan.'));
+                console.error('❌ Register error:', err);
+                let msg = err.message;
+                if (msg.includes('already registered')) {
+                    msg = 'Email sudah terdaftar, silakan login.';
+                } else if (msg.includes('duplicate key') || msg.includes('unique constraint')) {
+                    msg = 'Username sudah digunakan, pilih yang lain.';
                 }
+                showError('Registrasi gagal: ' + msg);
             } finally {
                 setLoading(btn, false);
             }
         }
 
-        // ===================================================================
-        //  LOGIN (dengan Supabase Auth + ambil/update profile)
-        // ===================================================================
+        // ================================================================
+        //  LOGIN
+        // ================================================================
         async function loginUser(e) {
             e.preventDefault();
             const email = document.getElementById('loginEmail').value.trim();
@@ -703,54 +710,47 @@
             }
 
             setLoading(btn, true);
+            console.log('⏳ Mencoba login:', email);
 
             try {
                 const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-                    email: email,
-                    password: password
+                    email,
+                    password
                 });
 
-                if (authError) throw authError;
-
-                if (!authData.user) {
-                    throw new Error('Akun tidak ditemukan.');
+                if (authError) {
+                    console.error('❌ Login auth error:', authError);
+                    throw new Error(authError.message);
                 }
 
                 const user = authData.user;
                 const userId = user.id;
 
-                // Ambil profile dari tabel profiles
+                // Ambil profile
                 let { data: profileData, error: profileError } = await supabase
                     .from('profiles')
                     .select('name, username')
                     .eq('user_id', userId)
                     .maybeSingle();
 
-                // Jika profile belum ada, buat baru dengan data dari metadata
+                // Jika profile belum ada, buat
                 if (profileError || !profileData) {
-                    console.warn('Profile tidak ditemukan, membuat baru...');
+                    console.warn('⚠️ Profile tidak ditemukan, membuat baru...');
                     const name = user.user_metadata?.name || email.split('@')[0];
                     const username = user.user_metadata?.username || email.split('@')[0];
-                    await createUserProfile(userId, name, username, email);
-                    // Ambil ulang profile
-                    const { data: newProfile, error: newError } = await supabase
+                    await createProfileAndSettings(userId, name, username, email);
+                    // Ambil ulang
+                    const { data: newProfile } = await supabase
                         .from('profiles')
                         .select('name, username')
                         .eq('user_id', userId)
                         .single();
-                    if (newError) {
-                        console.error('Gagal mengambil profile setelah dibuat:', newError);
-                        // Fallback ke metadata
-                        profileData = { name, username };
-                    } else {
-                        profileData = newProfile;
-                    }
+                    profileData = newProfile || { name, username };
                 }
 
                 const userName = profileData?.name || user.user_metadata?.name || email.split('@')[0];
                 const userUsername = profileData?.username || user.user_metadata?.username || email.split('@')[0];
 
-                // Simpan ke localStorage
                 localStorage.setItem('fleet_current_user', JSON.stringify({
                     id: userId,
                     name: userName,
@@ -759,50 +759,49 @@
                     access_token: authData.session?.access_token || null
                 }));
 
-                showSuccess('Login berhasil! Mengarahkan ke dashboard...');
+                showSuccess('Login berhasil!');
                 setTimeout(() => window.location.href = 'dashboard.html', 1500);
 
             } catch (err) {
-                console.error('Login error:', err);
-                if (err.message.includes('Invalid login credentials')) {
-                    showError('Email atau password salah.');
-                } else {
-                    showError('Login gagal: ' + (err.message || 'Terjadi kesalahan.'));
+                console.error('❌ Login error:', err);
+                let msg = err.message;
+                if (msg.includes('Invalid login credentials')) {
+                    msg = 'Email atau password salah.';
                 }
+                showError('Login gagal: ' + msg);
             } finally {
                 setLoading(btn, false);
             }
         }
 
-        // ===================================================================
+        // ================================================================
         //  EVENT LISTENERS
-        // ===================================================================
+        // ================================================================
         document.getElementById('loginFormElement').addEventListener('submit', loginUser);
         document.getElementById('registerFormElement').addEventListener('submit', registerUser);
 
-        // ===================================================================
+        // ================================================================
         //  CEK SESSION — jika sudah login, redirect ke dashboard
-        // ===================================================================
+        // ================================================================
         (function checkSession() {
             const raw = localStorage.getItem('fleet_current_user');
-            if (!raw) return;
-            try {
-                const user = JSON.parse(raw);
-                if (user && user.id) {
-                    window.location.href = 'dashboard.html';
+            if (raw) {
+                try {
+                    const user = JSON.parse(raw);
+                    if (user && user.id) {
+                        window.location.href = 'dashboard.html';
+                    }
+                } catch (_) {
+                    localStorage.removeItem('fleet_current_user');
                 }
-            } catch (_) {
-                localStorage.removeItem('fleet_current_user');
             }
         })();
 
-        // ===================================================================
-        //  AUTO-FOCUS & KEYBOARD SHORTCUTS
-        // ===================================================================
+        // ================================================================
+        //  AUTO-FOCUS & SHORTCUTS
+        // ================================================================
         document.addEventListener('DOMContentLoaded', () => {
-            const emailInput = document.getElementById('loginEmail');
-            if (emailInput) emailInput.focus();
-
+            document.getElementById('loginEmail')?.focus();
             document.addEventListener('keydown', (e) => {
                 if (e.key === 'Escape') {
                     errorDiv.style.display = 'none';
@@ -811,7 +810,7 @@
             });
         });
 
-        console.log('🚀 Fleet Tracker Login — Supabase Ready');
+        console.log('🚀 Fleet Tracker Login — Ready');
         console.log('📡 Supabase URL:', SUPABASE_URL);
     </script>
 </body>
