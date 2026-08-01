@@ -3,43 +3,36 @@
 require_once 'config.php';
 
 // Ambil parameter
-$user_id = isset($_GET['user_id']) ? (int) $_GET['user_id] : 0;
+$user_id = isset($_GET['user_id']) ? $_GET['user_id'] : null;
 $device_id = isset($_GET['device_id']) ? trim($_GET['device_id']) : null;
 
-// Validasi user_id
-if ($user_id === 0) {
+if (!$user_id) {
     sendJson(['error' => 'user_id required'], 400);
 }
 
-// Query dasar
-$sql = "SELECT id, name, coordinates, type, center_lat, center_lng, radius_meters 
-        FROM geofences 
-        WHERE user_id = ?";
-$params = [$user_id];
+// Bangun filter untuk Supabase
+$filters = [];
+$filters[] = "user_id=eq." . $user_id;
 
-// Filter berdasarkan device_id jika ada (bisa null untuk global)
 if ($device_id !== null && $device_id !== '') {
-    $sql .= " AND (device_id = ? OR device_id IS NULL)";
-    $params[] = $device_id;
+    $filters[] = "device_id=eq." . $device_id;
 }
 
-// Order by nama
-$sql .= " ORDER BY name ASC";
+// Tambahkan filter untuk device_id NULL jika device_id tidak diberikan?
+// Secara default kita ambil semua device milik user
 
-$stmt = $pdo->prepare($sql);
-$stmt->execute($params);
-$geofences = $stmt->fetchAll();
+$queryString = implode('&', $filters);
+$endpoint = "geofences?$queryString&order=name.asc";
 
-// Decode coordinates JSON dan tambahkan fallback jika invalid
-foreach ($geofences as &$g) {
-    $coords = json_decode($g['coordinates'], true);
-    if (is_array($coords)) {
-        $g['coordinates'] = $coords;
-    } else {
-        $g['coordinates'] = []; // fallback jika JSON tidak valid
-    }
+$result = supabaseRequest('GET', $endpoint);
+
+if ($result['status'] >= 200 && $result['status'] < 300) {
+    // Data sudah dalam bentuk array dari Supabase
+    sendJson($result['body']);
+} else {
+    sendJson([
+        'error' => 'Gagal mengambil geofence',
+        'detail' => $result['body']
+    ], $result['status'] >= 400 ? $result['status'] : 500);
 }
-
-// Kirim response
-sendJson($geofences);
 ?>
