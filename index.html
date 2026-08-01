@@ -1,14 +1,13 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Fleet Tracker Login</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
-    <!-- Supabase Client v2 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        /* ===== CSS SAMA SEPERTI SEBELUMNYA ===== */
+        /* (CSS SAMA PERSIS SEPERTI SEBELUMNYA) */
         * {
             margin: 0;
             padding: 0;
@@ -28,10 +27,10 @@
             position: fixed;
             top: 20px;
             right: 20px;
-            background: rgba(255, 255, 255, 0.2);
+            background: rgba(255,255,255,0.2);
             backdrop-filter: blur(10px);
             -webkit-backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.3);
+            border: 1px solid rgba(255,255,255,0.3);
             color: white;
             width: 45px;
             height: 45px;
@@ -43,10 +42,10 @@
             font-size: 1.2rem;
             z-index: 1000;
             transition: all 0.3s ease;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
         }
         .fullscreen-btn:hover {
-            background: rgba(255, 255, 255, 0.4);
+            background: rgba(255,255,255,0.4);
             transform: scale(1.1);
         }
         .fullscreen-btn:active {
@@ -63,7 +62,7 @@
             overflow: hidden;
             display: flex;
             flex-wrap: wrap;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
         }
         .auth-left {
             flex: 1;
@@ -143,14 +142,8 @@
             display: block;
         }
         @keyframes fadeIn {
-            from {
-                opacity: 0;
-                transform: translateY(10px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
         }
         .form-group {
             margin-bottom: 20px;
@@ -175,8 +168,8 @@
             font-size: 0.95rem;
             transition: color 0.2s;
         }
-        .form-group input:focus+.input-icon,
-        .form-group input:focus~.input-icon {
+        .form-group input:focus + .input-icon,
+        .form-group input:focus ~ .input-icon {
             color: #667eea;
         }
         .form-group input {
@@ -193,7 +186,7 @@
         .form-group input:focus {
             border-color: #667eea;
             background: #fff;
-            box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.12);
+            box-shadow: 0 0 0 4px rgba(102,126,234,0.12);
         }
         .form-group input::placeholder {
             color: #aaa;
@@ -217,7 +210,7 @@
         }
         .btn-auth:hover {
             transform: translateY(-2px);
-            box-shadow: 0 8px 30px rgba(102, 126, 234, 0.35);
+            box-shadow: 0 8px 30px rgba(102,126,234,0.35);
         }
         .btn-auth:active {
             transform: scale(0.98);
@@ -231,7 +224,7 @@
             display: none;
             width: 22px;
             height: 22px;
-            border: 3px solid rgba(255, 255, 255, 0.3);
+            border: 3px solid rgba(255,255,255,0.3);
             border-top-color: #fff;
             border-radius: 50%;
             animation: spin 0.7s linear infinite;
@@ -243,9 +236,7 @@
             display: none;
         }
         @keyframes spin {
-            to {
-                transform: rotate(360deg);
-            }
+            to { transform: rotate(360deg); }
         }
         .error-message,
         .success-message {
@@ -287,11 +278,11 @@
             bottom: 16px;
             left: 50%;
             transform: translateX(-50%);
-            background: rgba(0, 0, 0, 0.3);
+            background: rgba(0,0,0,0.3);
             backdrop-filter: blur(8px);
             -webkit-backdrop-filter: blur(8px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            color: rgba(255, 255, 255, 0.6);
+            border: 1px solid rgba(255,255,255,0.1);
+            color: rgba(255,255,255,0.6);
             padding: 6px 16px;
             border-radius: 40px;
             font-size: 0.7rem;
@@ -299,74 +290,29 @@
             z-index: 999;
         }
         @media (max-width: 768px) {
-            .auth-card {
-                flex-direction: column;
-                border-radius: 20px;
-            }
-            .auth-left {
-                padding: 35px 28px;
-                min-width: unset;
-            }
-            .auth-left h1 {
-                font-size: 1.8rem;
-            }
-            .auth-left p {
-                font-size: 0.95rem;
-            }
-            .auth-right {
-                padding: 32px 24px;
-                min-width: unset;
-            }
-            .feature-item {
-                font-size: 0.85rem;
-            }
-            .fullscreen-btn {
-                top: 14px;
-                right: 14px;
-                width: 40px;
-                height: 40px;
-                font-size: 1rem;
-            }
-            .auth-tabs {
-                gap: 16px;
-            }
-            .auth-tab {
-                font-size: 0.9rem;
-                padding: 10px 0 8px;
-            }
+            .auth-card { flex-direction: column; border-radius: 20px; }
+            .auth-left { padding: 35px 28px; min-width: unset; }
+            .auth-left h1 { font-size: 1.8rem; }
+            .auth-left p { font-size: 0.95rem; }
+            .auth-right { padding: 32px 24px; min-width: unset; }
+            .feature-item { font-size: 0.85rem; }
+            .fullscreen-btn { top: 14px; right: 14px; width: 40px; height: 40px; font-size: 1rem; }
+            .auth-tabs { gap: 16px; }
+            .auth-tab { font-size: 0.9rem; padding: 10px 0 8px; }
         }
         @media (max-width: 400px) {
-            .auth-left {
-                padding: 24px 18px;
-            }
-            .auth-left h1 {
-                font-size: 1.5rem;
-            }
-            .auth-right {
-                padding: 24px 16px;
-            }
-            .form-group input {
-                padding: 12px 12px 12px 40px;
-                font-size: 0.9rem;
-            }
-            .btn-auth {
-                padding: 13px;
-                font-size: 0.9rem;
-            }
-            .fullscreen-btn {
-                top: 10px;
-                right: 10px;
-                width: 36px;
-                height: 36px;
-                font-size: 0.9rem;
-            }
+            .auth-left { padding: 24px 18px; }
+            .auth-left h1 { font-size: 1.5rem; }
+            .auth-right { padding: 24px 16px; }
+            .form-group input { padding: 12px 12px 12px 40px; font-size: 0.9rem; }
+            .btn-auth { padding: 13px; font-size: 0.9rem; }
+            .fullscreen-btn { top: 10px; right: 10px; width: 36px; height: 36px; font-size: 0.9rem; }
         }
     </style>
 </head>
 <body>
 
-    <!-- TOMBOL FULLSCREEN -->
-    <button class="fullscreen-btn" id="fullscreenToggle" title="Toggle Fullscreen" aria-label="Toggle fullscreen">
+    <button class="fullscreen-btn" id="fullscreenToggle" title="Toggle Fullscreen">
         <i class="fas fa-expand" id="fullscreenIcon"></i>
     </button>
 
@@ -408,7 +354,7 @@
                             <span class="btn-text"><i class="fas fa-sign-in-alt"></i> Login Dashboard</span>
                         </button>
                         <div class="form-footer">
-                            Belum punya akun? <a href="#" onclick="switchTab('register'); return false;">Daftar di sini</a>
+                            Belum punya akun? <a href="#" id="switchToRegisterLink">Daftar di sini</a>
                         </div>
                     </form>
                 </div>
@@ -446,7 +392,7 @@
                             <span class="btn-text"><i class="fas fa-user-plus"></i> Register</span>
                         </button>
                         <div class="form-footer">
-                            Sudah punya akun? <a href="#" onclick="switchTab('login'); return false;">Login di sini</a>
+                            Sudah punya akun? <a href="#" id="switchToLoginLink">Login di sini</a>
                         </div>
                     </form>
                 </div>
@@ -458,16 +404,16 @@
 
     <script>
         // ================================================================
-        //  ⚙️ KONFIGURASI SUPABASE — GANTI DENGAN MILIK ANDA
+        // 1. KONFIGURASI SUPABASE (GANTI DENGAN MILIK ANDA)
         // ================================================================
         const SUPABASE_URL = 'https://your-project.supabase.co';   // <-- GANTI
         const SUPABASE_ANON_KEY = 'your-anon-key';                 // <-- GANTI
 
-        // Inisialisasi Supabase Client
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        // Gunakan nama variabel yang unik untuk menghindari konflik
+        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         // ================================================================
-        //  DOM REFS
+        // 2. DOM REFS
         // ================================================================
         const errorDiv = document.getElementById('errorMsg');
         const successDiv = document.getElementById('successMsg');
@@ -489,12 +435,12 @@
         }
 
         // ================================================================
-        //  SWITCH TAB
+        // 3. SWITCH TAB (fungsi global, dipanggil dari event listener)
         // ================================================================
         function switchTab(tab) {
             document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
-            const target = document.querySelector(`.auth-tab[data-tab="${tab}"]`);
-            if (target) target.classList.add('active');
+            const targetTab = document.querySelector(`.auth-tab[data-tab="${tab}"]`);
+            if (targetTab) targetTab.classList.add('active');
 
             document.getElementById('loginForm').classList.toggle('active', tab === 'login');
             document.getElementById('registerForm').classList.toggle('active', tab === 'register');
@@ -502,18 +448,8 @@
             successDiv.style.display = 'none';
         }
 
-        document.querySelectorAll('.auth-tab').forEach(tab => {
-            tab.addEventListener('click', () => switchTab(tab.dataset.tab));
-            tab.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    switchTab(tab.dataset.tab);
-                }
-            });
-        });
-
         // ================================================================
-        //  FULLSCREEN
+        // 4. FULLSCREEN
         // ================================================================
         const fullscreenToggle = document.getElementById('fullscreenToggle');
         const fullscreenIcon = document.getElementById('fullscreenIcon');
@@ -538,7 +474,7 @@
         document.addEventListener('webkitfullscreenchange', updateFullscreenIcon);
 
         // ================================================================
-        //  LOADING STATE
+        // 5. LOADING STATE
         // ================================================================
         function setLoading(btn, loading) {
             btn.classList.toggle('loading', loading);
@@ -546,27 +482,27 @@
         }
 
         // ================================================================
-        //  FUNGSI BANTU: CREATE PROFILE & SETTINGS
+        // 6. FUNGSI BANTU: CREATE PROFILE & SETTINGS
         // ================================================================
         async function createProfileAndSettings(userId, name, username, email) {
-            // Cek apakah profile sudah ada (untuk menghindari duplicate)
-            const { data: existing, error: checkError } = await supabase
+            // Cek apakah profile sudah ada
+            const { data: existing, error: checkError } = await supabaseClient
                 .from('profiles')
                 .select('user_id')
                 .eq('user_id', userId)
                 .maybeSingle();
 
             if (checkError && checkError.code !== 'PGRST116') {
-                console.warn('⚠️ Gagal cek profile:', checkError);
+                console.warn('Gagal cek profile:', checkError);
             }
 
             if (existing) {
-                console.log('ℹ️ Profile sudah ada, skip insert.');
+                console.log('Profile sudah ada, skip insert.');
                 return { profileError: null, settingsError: null };
             }
 
             // Insert profile
-            const { error: profileError } = await supabase
+            const { error: profileError } = await supabaseClient
                 .from('profiles')
                 .insert([{
                     user_id: userId,
@@ -578,17 +514,16 @@
                 }]);
 
             if (profileError) {
-                console.error('❌ Profile insert error:', profileError);
-                // Jika error karena duplicate, anggap sudah ada
+                console.error('Profile insert error:', profileError);
                 if (profileError.code === '23505') {
-                    console.log('ℹ️ Profile mungkin sudah ada (duplicate), lanjutkan.');
+                    console.log('Profile mungkin sudah ada (duplicate), lanjutkan.');
                 } else {
                     throw new Error('Gagal menyimpan profile: ' + profileError.message);
                 }
             }
 
             // Insert settings (opsional)
-            const { error: settingsError } = await supabase
+            const { error: settingsError } = await supabaseClient
                 .from('settings')
                 .insert([{
                     user_id: userId,
@@ -598,15 +533,14 @@
                 }]);
 
             if (settingsError) {
-                console.warn('⚠️ Settings insert error (non-fatal):', settingsError);
-                // Tidak throw, karena settings tidak kritis
+                console.warn('Settings insert error (non-fatal):', settingsError);
             }
 
             return { profileError, settingsError };
         }
 
         // ================================================================
-        //  REGISTER
+        // 7. REGISTER
         // ================================================================
         async function registerUser(e) {
             e.preventDefault();
@@ -618,7 +552,6 @@
             const confirm = document.getElementById('regConfirmPassword').value;
             const btn = document.getElementById('registerBtn');
 
-            // Validasi
             if (!name || !email || !username || !password) {
                 showError('Semua field wajib diisi!');
                 return;
@@ -640,41 +573,27 @@
             console.log('⏳ Memulai registrasi untuk:', email);
 
             try {
-                // 1. Sign up dengan Supabase Auth
-                console.log('📤 Mencoba signUp...');
-                const { data: authData, error: authError } = await supabase.auth.signUp({
-                    email: email,
-                    password: password,
+                const { data: authData, error: authError } = await supabaseClient.auth.signUp({
+                    email,
+                    password,
                     options: {
-                        data: {
-                            name: name,
-                            username: username
-                        }
+                        data: { name, username }
                     }
                 });
 
-                if (authError) {
-                    console.error('❌ Auth error:', authError);
-                    throw new Error(authError.message);
-                }
-
-                if (!authData.user) {
-                    throw new Error('User tidak terbuat, respons kosong.');
-                }
+                if (authError) throw new Error(authError.message);
+                if (!authData.user) throw new Error('User tidak terbuat.');
 
                 const userId = authData.user.id;
                 console.log('✅ User terbuat, ID:', userId);
 
-                // 2. Buat profile dan settings
-                console.log('📝 Membuat profile dan settings...');
                 await createProfileAndSettings(userId, name, username, email);
 
-                // 3. Simpan ke localStorage
                 localStorage.setItem('fleet_current_user', JSON.stringify({
                     id: userId,
-                    name: name,
-                    email: email,
-                    username: username,
+                    name,
+                    email,
+                    username,
                     access_token: authData.session?.access_token || null
                 }));
 
@@ -684,11 +603,8 @@
             } catch (err) {
                 console.error('❌ Register error:', err);
                 let msg = err.message;
-                if (msg.includes('already registered')) {
-                    msg = 'Email sudah terdaftar, silakan login.';
-                } else if (msg.includes('duplicate key') || msg.includes('unique constraint')) {
-                    msg = 'Username sudah digunakan, pilih yang lain.';
-                }
+                if (msg.includes('already registered')) msg = 'Email sudah terdaftar, silakan login.';
+                else if (msg.includes('duplicate key') || msg.includes('unique constraint')) msg = 'Username sudah digunakan, pilih yang lain.';
                 showError('Registrasi gagal: ' + msg);
             } finally {
                 setLoading(btn, false);
@@ -696,7 +612,7 @@
         }
 
         // ================================================================
-        //  LOGIN
+        // 8. LOGIN
         // ================================================================
         async function loginUser(e) {
             e.preventDefault();
@@ -713,34 +629,28 @@
             console.log('⏳ Mencoba login:', email);
 
             try {
-                const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+                const { data: authData, error: authError } = await supabaseClient.auth.signInWithPassword({
                     email,
                     password
                 });
 
-                if (authError) {
-                    console.error('❌ Login auth error:', authError);
-                    throw new Error(authError.message);
-                }
+                if (authError) throw new Error(authError.message);
 
                 const user = authData.user;
                 const userId = user.id;
 
-                // Ambil profile
-                let { data: profileData, error: profileError } = await supabase
+                let { data: profileData, error: profileError } = await supabaseClient
                     .from('profiles')
                     .select('name, username')
                     .eq('user_id', userId)
                     .maybeSingle();
 
-                // Jika profile belum ada, buat
                 if (profileError || !profileData) {
                     console.warn('⚠️ Profile tidak ditemukan, membuat baru...');
                     const name = user.user_metadata?.name || email.split('@')[0];
                     const username = user.user_metadata?.username || email.split('@')[0];
                     await createProfileAndSettings(userId, name, username, email);
-                    // Ambil ulang
-                    const { data: newProfile } = await supabase
+                    const { data: newProfile } = await supabaseClient
                         .from('profiles')
                         .select('name, username')
                         .eq('user_id', userId)
@@ -765,9 +675,7 @@
             } catch (err) {
                 console.error('❌ Login error:', err);
                 let msg = err.message;
-                if (msg.includes('Invalid login credentials')) {
-                    msg = 'Email atau password salah.';
-                }
+                if (msg.includes('Invalid login credentials')) msg = 'Email atau password salah.';
                 showError('Login gagal: ' + msg);
             } finally {
                 setLoading(btn, false);
@@ -775,15 +683,49 @@
         }
 
         // ================================================================
-        //  EVENT LISTENERS
+        // 9. PASANG EVENT LISTENER SETELAH DOM SIAP
         // ================================================================
-        document.getElementById('loginFormElement').addEventListener('submit', loginUser);
-        document.getElementById('registerFormElement').addEventListener('submit', registerUser);
+        document.addEventListener('DOMContentLoaded', function() {
 
-        // ================================================================
-        //  CEK SESSION — jika sudah login, redirect ke dashboard
-        // ================================================================
-        (function checkSession() {
+            // Tab switching via klik pada .auth-tab
+            document.querySelectorAll('.auth-tab').forEach(tab => {
+                tab.addEventListener('click', function(e) {
+                    switchTab(this.dataset.tab);
+                });
+                tab.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        switchTab(this.dataset.tab);
+                    }
+                });
+            });
+
+            // Link "Daftar di sini" dan "Login di sini"
+            document.getElementById('switchToRegisterLink').addEventListener('click', function(e) {
+                e.preventDefault();
+                switchTab('register');
+            });
+            document.getElementById('switchToLoginLink').addEventListener('click', function(e) {
+                e.preventDefault();
+                switchTab('login');
+            });
+
+            // Form submit
+            document.getElementById('loginFormElement').addEventListener('submit', loginUser);
+            document.getElementById('registerFormElement').addEventListener('submit', registerUser);
+
+            // Auto-focus
+            document.getElementById('loginEmail')?.focus();
+
+            // Escape untuk menyembunyikan pesan
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape') {
+                    errorDiv.style.display = 'none';
+                    successDiv.style.display = 'none';
+                }
+            });
+
+            // Cek session (redirect jika sudah login)
             const raw = localStorage.getItem('fleet_current_user');
             if (raw) {
                 try {
@@ -795,23 +737,10 @@
                     localStorage.removeItem('fleet_current_user');
                 }
             }
-        })();
 
-        // ================================================================
-        //  AUTO-FOCUS & SHORTCUTS
-        // ================================================================
-        document.addEventListener('DOMContentLoaded', () => {
-            document.getElementById('loginEmail')?.focus();
-            document.addEventListener('keydown', (e) => {
-                if (e.key === 'Escape') {
-                    errorDiv.style.display = 'none';
-                    successDiv.style.display = 'none';
-                }
-            });
+            console.log('🚀 Fleet Tracker Login — Ready');
+            console.log('📡 Supabase URL:', SUPABASE_URL);
         });
-
-        console.log('🚀 Fleet Tracker Login — Ready');
-        console.log('📡 Supabase URL:', SUPABASE_URL);
     </script>
 </body>
 </html>
