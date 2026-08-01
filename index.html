@@ -410,13 +410,15 @@
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdhcGNxbGNxb3dtaGNwemJxeWdyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUxNjc4NTcsImV4cCI6MjEwMDc0Mzg1N30.UnMBcPNcvzXj9v_JgsJktQ5iYmdXXDJnOYuJX1ZcWXQ';
 
         // ================================================================
-        // 2. VALIDASI SEDERHANA (hanya peringatan di console, bukan alert)
+        // 2. VALIDASI — hanya peringatan jika benar-benar placeholder
         // ================================================================
-        if (!SUPABASE_URL || SUPABASE_URL.includes('your-project')) {
-            console.error('❌ SUPABASE_URL salah!');
-        }
-        if (!SUPABASE_ANON_KEY || SUPABASE_ANON_KEY.length < 20 || SUPABASE_ANON_KEY.includes('sb_secret')) {
-            console.error('❌ SUPABASE_ANON_KEY salah! Gunakan anon public key.');
+        const isPlaceholderUrl = SUPABASE_URL === 'https://your-project.supabase.co' || !SUPABASE_URL;
+        const isPlaceholderKey = SUPABASE_ANON_KEY === 'your-anon-key' || 
+                                SUPABASE_ANON_KEY.includes('sb_secret') ||
+                                SUPABASE_ANON_KEY.length < 20;
+
+        if (isPlaceholderUrl || isPlaceholderKey) {
+            console.warn('⚠️ Konfigurasi Supabase belum diisi dengan benar!');
         } else {
             console.log('✅ Konfigurasi Supabase valid.');
         }
