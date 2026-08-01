@@ -8,6 +8,7 @@
     <!-- Supabase Client -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
+        /* (CSS tidak berubah, tetap sama seperti sebelumnya) */
         * {
             margin: 0;
             padding: 0;
@@ -458,11 +459,13 @@
 
     <script>
         // ===================================================================
-        //  KONFIGURASI SUPABASE
+        //  KONFIGURASI SUPABASE (dari environment variables Netlify atau fallback)
         // ===================================================================
-        // Di Netlify, set SUPABASE_URL dan SUPABASE_ANON_KEY di Environment Variables
-        const SUPABASE_URL = window.SUPABASE_URL || 'https://gapcqlcqowmhcpzbqygr.supabase.co';
-        const SUPABASE_ANON_KEY = window.SUPABASE_ANON_KEY || 'sb_secret_ruYKHGf-xjO-hGnGaM8JsA_fQ2c53TD';
+        // Di Netlify, variabel lingkungan akan tersedia di window (jika di-inject)
+        // atau bisa juga menggunakan import.meta.env jika menggunakan Vite.
+        // Untuk keamanan, sebaiknya gunakan environment variables yang di-set di Netlify.
+        const SUPABASE_URL = window.SUPABASE_URL || 'https://your-project.supabase.co';
+        const SUPABASE_ANON_KEY = window.SUPABASE_ANON_KEY || 'your-anon-key';
 
         // Inisialisasi Supabase Client
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -567,7 +570,44 @@
         }
 
         // ===================================================================
-        //  REGISTER (dengan Supabase Auth)
+        //  FUNGSI BANTU UNTUK MEMBUAT PROFILE & SETTINGS
+        // ===================================================================
+        async function createUserProfile(userId, name, username, email) {
+            // Insert ke tabel profiles
+            const { error: profileError } = await supabase
+                .from('profiles')
+                .insert([{
+                    user_id: userId,
+                    name: name,
+                    username: username,
+                    email: email, // opsional, bisa juga diambil dari auth.users
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                }]);
+
+            if (profileError) {
+                console.error('Gagal insert profile:', profileError);
+                throw new Error('Gagal menyimpan data profil.');
+            }
+
+            // Insert ke tabel settings (default)
+            const { error: settingsError } = await supabase
+                .from('settings')
+                .insert([{
+                    user_id: userId,
+                    theme: 'light',
+                    notifications: true,
+                    language: 'id'
+                }]);
+
+            if (settingsError) {
+                console.error('Gagal insert settings:', settingsError);
+                // Tidak throw, karena settings bisa dianggap opsional
+            }
+        }
+
+        // ===================================================================
+        //  REGISTER (dengan Supabase Auth + insert profile & settings)
         // ===================================================================
         async function registerUser(e) {
             e.preventDefault();
@@ -617,17 +657,18 @@
                     throw new Error('Gagal membuat akun, coba lagi.');
                 }
 
-                // 2. Profile dan settings akan otomatis dibuat oleh trigger di Supabase
-                //    Jadi kita tidak perlu insert manual.
-
                 const userId = authData.user.id;
 
-                // 3. Simpan ke localStorage
+                // 2. Insert ke tabel profiles dan settings secara manual
+                await createUserProfile(userId, name, username, email);
+
+                // 3. Simpan user ke localStorage
                 localStorage.setItem('fleet_current_user', JSON.stringify({
                     id: userId,
                     name: name,
                     email: email,
-                    username: username
+                    username: username,
+                    access_token: authData.session?.access_token || null
                 }));
 
                 showSuccess('Pendaftaran berhasil! Mengarahkan ke dashboard...');
@@ -637,6 +678,8 @@
                 console.error('Register error:', err);
                 if (err.message.includes('already registered')) {
                     showError('Email sudah terdaftar, silakan login.');
+                } else if (err.message.includes('duplicate key value')) {
+                    showError('Username sudah digunakan, pilih username lain.');
                 } else {
                     showError('Registrasi gagal: ' + (err.message || 'Terjadi kesalahan.'));
                 }
@@ -646,7 +689,7 @@
         }
 
         // ===================================================================
-        //  LOGIN (dengan Supabase Auth)
+        //  LOGIN (dengan Supabase Auth + ambil/update profile)
         // ===================================================================
         async function loginUser(e) {
             e.preventDefault();
@@ -677,14 +720,31 @@
                 const userId = user.id;
 
                 // Ambil profile dari tabel profiles
-                const { data: profileData, error: profileError } = await supabase
+                let { data: profileData, error: profileError } = await supabase
                     .from('profiles')
                     .select('name, username')
                     .eq('user_id', userId)
-                    .single();
+                    .maybeSingle();
 
-                if (profileError) {
-                    console.warn('Gagal mengambil profile:', profileError);
+                // Jika profile belum ada, buat baru dengan data dari metadata
+                if (profileError || !profileData) {
+                    console.warn('Profile tidak ditemukan, membuat baru...');
+                    const name = user.user_metadata?.name || email.split('@')[0];
+                    const username = user.user_metadata?.username || email.split('@')[0];
+                    await createUserProfile(userId, name, username, email);
+                    // Ambil ulang profile
+                    const { data: newProfile, error: newError } = await supabase
+                        .from('profiles')
+                        .select('name, username')
+                        .eq('user_id', userId)
+                        .single();
+                    if (newError) {
+                        console.error('Gagal mengambil profile setelah dibuat:', newError);
+                        // Fallback ke metadata
+                        profileData = { name, username };
+                    } else {
+                        profileData = newProfile;
+                    }
                 }
 
                 const userName = profileData?.name || user.user_metadata?.name || email.split('@')[0];
@@ -696,8 +756,7 @@
                     name: userName,
                     email: user.email,
                     username: userUsername,
-                    // Simpan access_token untuk API call
-                    access_token: authData.session?.access_token
+                    access_token: authData.session?.access_token || null
                 }));
 
                 showSuccess('Login berhasil! Mengarahkan ke dashboard...');
