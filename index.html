@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        /* (CSS SAMA PERSIS SEPERTI SEBELUMNYA) */
+        /* CSS SAMA SEPERTI SEBELUMNYA - tidak diubah */
         * {
             margin: 0;
             padding: 0;
@@ -311,7 +311,7 @@
     </style>
 </head>
 <body>
-
+    <!-- HTML sama seperti sebelumnya -->
     <button class="fullscreen-btn" id="fullscreenToggle" title="Toggle Fullscreen">
         <i class="fas fa-expand" id="fullscreenIcon"></i>
     </button>
@@ -404,30 +404,16 @@
 
     <script>
         // ================================================================
-        // 1. KONFIGURASI SUPABASE — SUDAH DIISI DENGAN KEY BENAR
+        // 1. KONFIGURASI SUPABASE
         // ================================================================
         const SUPABASE_URL = 'https://gapcqlcqowmhcpzbqygr.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdhcGNxbGNxb3dtaGNwemJxeWdyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUxNjc4NTcsImV4cCI6MjEwMDc0Mzg1N30.UnMBcPNcvzXj9v_JgsJktQ5iYmdXXDJnOYuJX1ZcWXQ';
 
-        // ================================================================
-        // 2. VALIDASI — hanya peringatan jika benar-benar placeholder
-        // ================================================================
-        const isPlaceholderUrl = SUPABASE_URL === 'https://your-project.supabase.co' || !SUPABASE_URL;
-        const isPlaceholderKey = SUPABASE_ANON_KEY === 'your-anon-key' || 
-                                SUPABASE_ANON_KEY.includes('sb_secret') ||
-                                SUPABASE_ANON_KEY.length < 20;
-
-        if (isPlaceholderUrl || isPlaceholderKey) {
-            console.warn('⚠️ Konfigurasi Supabase belum diisi dengan benar!');
-        } else {
-            console.log('✅ Konfigurasi Supabase valid.');
-        }
-
-        // Inisialisasi Supabase Client
         const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        console.log('✅ Supabase client initialized');
 
         // ================================================================
-        // 3. DOM REFS
+        // 2. DOM REFS
         // ================================================================
         const errorDiv = document.getElementById('errorMsg');
         const successDiv = document.getElementById('successMsg');
@@ -437,7 +423,7 @@
             errorDiv.style.display = 'block';
             successDiv.style.display = 'none';
             clearTimeout(errorDiv._hide);
-            errorDiv._hide = setTimeout(() => { errorDiv.style.display = 'none'; }, 6000);
+            errorDiv._hide = setTimeout(() => { errorDiv.style.display = 'none'; }, 8000);
         }
 
         function showSuccess(msg) {
@@ -445,11 +431,11 @@
             successDiv.style.display = 'block';
             errorDiv.style.display = 'none';
             clearTimeout(successDiv._hide);
-            successDiv._hide = setTimeout(() => { successDiv.style.display = 'none'; }, 6000);
+            successDiv._hide = setTimeout(() => { successDiv.style.display = 'none'; }, 8000);
         }
 
         // ================================================================
-        // 4. SWITCH TAB
+        // 3. SWITCH TAB
         // ================================================================
         function switchTab(tab) {
             document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
@@ -463,7 +449,7 @@
         }
 
         // ================================================================
-        // 5. FULLSCREEN
+        // 4. FULLSCREEN
         // ================================================================
         const fullscreenToggle = document.getElementById('fullscreenToggle');
         const fullscreenIcon = document.getElementById('fullscreenIcon');
@@ -488,7 +474,7 @@
         document.addEventListener('webkitfullscreenchange', updateFullscreenIcon);
 
         // ================================================================
-        // 6. LOADING STATE
+        // 5. LOADING STATE
         // ================================================================
         function setLoading(btn, loading) {
             btn.classList.toggle('loading', loading);
@@ -496,9 +482,34 @@
         }
 
         // ================================================================
-        // 7. CREATE PROFILE & SETTINGS
+        // 6. CEK TABEL
+        // ================================================================
+        async function checkTables() {
+            try {
+                // Coba select dari profiles
+                const { data, error } = await supabaseClient
+                    .from('profiles')
+                    .select('id')
+                    .limit(1);
+                if (error) {
+                    console.error('❌ Tabel profiles error:', error);
+                    return false;
+                }
+                console.log('✅ Tabel profiles ditemukan.');
+                return true;
+            } catch (e) {
+                console.error('❌ Gagal mengecek tabel:', e);
+                return false;
+            }
+        }
+
+        // ================================================================
+        // 7. CREATE PROFILE & SETTINGS dengan error handling detail
         // ================================================================
         async function createProfileAndSettings(userId, name, username, email) {
+            console.log('📝 Menyimpan profile untuk user:', userId);
+
+            // Cek apakah profile sudah ada
             const { data: existing, error: checkError } = await supabaseClient
                 .from('profiles')
                 .select('user_id')
@@ -511,10 +522,11 @@
 
             if (existing) {
                 console.log('Profile sudah ada, skip insert.');
-                return { profileError: null, settingsError: null };
+                return;
             }
 
-            const { error: profileError } = await supabaseClient
+            // Insert profile dengan .select() untuk mendapatkan response
+            const { data: profileData, error: profileError } = await supabaseClient
                 .from('profiles')
                 .insert([{
                     user_id: userId,
@@ -523,17 +535,23 @@
                     email: email,
                     created_at: new Date().toISOString(),
                     updated_at: new Date().toISOString()
-                }]);
+                }])
+                .select();
 
             if (profileError) {
-                console.error('Profile insert error:', profileError);
-                if (profileError.code === '23505') {
-                    console.log('Profile mungkin sudah ada (duplicate), lanjutkan.');
-                } else {
-                    throw new Error('Gagal menyimpan profile: ' + profileError.message);
-                }
+                console.error('❌ Profile insert error DETAIL:', profileError);
+                // Tampilkan semua properti error
+                console.error('Error code:', profileError.code);
+                console.error('Error message:', profileError.message);
+                console.error('Error details:', profileError.details);
+                console.error('Error hint:', profileError.hint);
+                // Throw dengan pesan lengkap
+                throw new Error(`Gagal menyimpan profile: ${profileError.message} (${profileError.code}) - ${profileError.details || ''}`);
+            } else {
+                console.log('✅ Profile berhasil disimpan:', profileData);
             }
 
+            // Insert settings (opsional)
             const { error: settingsError } = await supabaseClient
                 .from('settings')
                 .insert([{
@@ -545,9 +563,10 @@
 
             if (settingsError) {
                 console.warn('Settings insert error (non-fatal):', settingsError);
+                // Tidak throw, karena settings tidak kritis
+            } else {
+                console.log('✅ Settings berhasil disimpan.');
             }
-
-            return { profileError, settingsError };
         }
 
         // ================================================================
@@ -584,6 +603,13 @@
             console.log('⏳ Memulai registrasi untuk:', email);
 
             try {
+                // 1. Cek tabel profiles
+                const tableOk = await checkTables();
+                if (!tableOk) {
+                    throw new Error('Tabel "profiles" tidak ditemukan. Silakan buat tabel di Supabase SQL Editor.');
+                }
+
+                // 2. Sign up
                 const { data: authData, error: authError } = await supabaseClient.auth.signUp({
                     email,
                     password,
@@ -592,14 +618,21 @@
                     }
                 });
 
-                if (authError) throw new Error(authError.message);
-                if (!authData.user) throw new Error('User tidak terbuat.');
+                if (authError) {
+                    console.error('❌ Auth error:', authError);
+                    throw new Error(authError.message);
+                }
+                if (!authData.user) {
+                    throw new Error('User tidak terbuat.');
+                }
 
                 const userId = authData.user.id;
                 console.log('✅ User terbuat, ID:', userId);
 
+                // 3. Simpan profile & settings
                 await createProfileAndSettings(userId, name, username, email);
 
+                // 4. Simpan ke localStorage
                 localStorage.setItem('fleet_current_user', JSON.stringify({
                     id: userId,
                     name,
@@ -612,11 +645,12 @@
                 setTimeout(() => window.location.href = 'dashboard.html', 1500);
 
             } catch (err) {
-                console.error('❌ Register error:', err);
+                console.error('❌ Register error DETAIL:', err);
                 let msg = err.message;
                 if (msg.includes('already registered')) msg = 'Email sudah terdaftar, silakan login.';
                 else if (msg.includes('duplicate key') || msg.includes('unique constraint')) msg = 'Username sudah digunakan, pilih yang lain.';
                 else if (msg.includes('Failed to fetch')) msg = 'Gagal terhubung ke Supabase. Periksa URL dan koneksi internet.';
+                else if (msg.includes('tidak ditemukan') || msg.includes('does not exist')) msg = 'Tabel belum dibuat. Jalankan skrip SQL di Supabase.';
                 showError('Registrasi gagal: ' + msg);
             } finally {
                 setLoading(btn, false);
@@ -748,7 +782,6 @@
 
             console.log('🚀 Fleet Tracker Login — Ready');
             console.log('📡 Supabase URL:', SUPABASE_URL);
-            console.log('🔑 Anon Key (first 10 chars):', SUPABASE_ANON_KEY.substring(0, 10) + '...');
         });
     </script>
 </body>
