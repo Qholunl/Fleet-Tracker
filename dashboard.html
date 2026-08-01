@@ -2565,7 +2565,8 @@
         const SUPABASE_URL = window.SUPABASE_URL || 'https://gapcqlcqowmhcpzbqygr.supabase.co';
         const SUPABASE_ANON_KEY = window.SUPABASE_ANON_KEY || 'sb_secret_ruYKHGf-xjO-hGnGaM8JsA_fQ2c53TD';
 
-        if (typeof supabase === 'undefined') {     var supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY); }
+        // INISIALISASI SUPABASE CLIENT — PERBAIKAN
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         // ================================================================
         //  KONFIGURASI HIVEMQ (MQTT) — siap pakai jika diperlukan
