@@ -2559,13 +2559,20 @@
 
     <script>
         // ================================================================
-        //  KONFIGURASI SUPABASE
+        //  KONFIGURASI SUPABASE (dari Environment Variables Netlify)
         // ================================================================
         // Di Netlify, set SUPABASE_URL dan SUPABASE_ANON_KEY di Environment Variables
         const SUPABASE_URL = window.SUPABASE_URL || 'https://gapcqlcqowmhcpzbqygr.supabase.co';
         const SUPABASE_ANON_KEY = window.SUPABASE_ANON_KEY || 'sb_secret_ruYKHGf-xjO-hGnGaM8JsA_fQ2c53TD';
 
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        // ================================================================
+        //  KONFIGURASI HIVEMQ (MQTT) — siap pakai jika diperlukan
+        // ================================================================
+        // const HIVEMQ_URL = window.HIVEMQ_URL || 'wss://your-broker.hivemq.cloud:8884/mqtt';
+        // const HIVEMQ_USER = window.HIVEMQ_USER || '';
+        // const HIVEMQ_PASS = window.HIVEMQ_PASS || '';
 
         // ================================================================
         //  KONFIGURASI UMUM
@@ -2894,24 +2901,9 @@
 
         function logout() {
             localStorage.removeItem(STORAGE_CURRENT_USER);
+            // Hapus juga session supabase jika perlu
+            supabase.auth.signOut().catch(() => {});
             window.location.href = 'index.html';
-        }
-
-        // ================================================================
-        //  SPEED LIMIT & KILL SWITCH
-        // ================================================================
-        function updateSpeedLimit(val) {
-            speedLimit = Number(val);
-            localStorage.setItem('fleet_speed_limit', val);
-        }
-
-        function toggleKillSwitch() {
-            const toggle = document.getElementById('killSwitchToggle');
-            isKillSwitchMode = !isKillSwitchMode;
-            toggle.classList.toggle('active');
-            localStorage.setItem('fleet_kill_switch_mode', isKillSwitchMode);
-            renderDeviceList();
-            showAlert(isKillSwitchMode ? '🔴 Mode Kill Switch AKTIF' : '🟢 Mode Kill Switch NONAKTIF', 'success');
         }
 
         // ================================================================
@@ -2941,7 +2933,7 @@
                 if (error) throw error;
 
                 devicesData = data.map(d => ({ id: d.id, name: d.name }));
-                // Simpan info tambahan
+                // Perbarui info tambahan
                 data.forEach(d => {
                     deviceInfoMap.set(d.id, {
                         status: d.status || 'offline',
@@ -2959,11 +2951,18 @@
 
                 renderDeviceList();
                 const lastId = localStorage.getItem('fleet_last_device');
-                if (lastId && devicesData.some(d => d.id === lastId)) selectDevice(lastId);
-                else if (devicesData.length > 0) selectDevice(devicesData[0].id);
+                if (lastId && devicesData.some(d => d.id === lastId)) {
+                    selectDevice(lastId);
+                } else if (devicesData.length > 0) {
+                    selectDevice(devicesData[0].id);
+                } else {
+                    resetTelemetryUI();
+                    stopPolling();
+                }
             } catch (e) {
                 console.error('Gagal load devices:', e);
                 showAlert('Gagal memuat daftar perangkat', 'danger');
+                container.innerHTML = '<div style="text-align:center;padding:12px;font-size:0.75rem;">Gagal memuat perangkat</div>';
             }
         }
 
@@ -3062,8 +3061,6 @@
         // ================================================================
         let pollingInterval = null;
         let pollingTimeout = null;
-        let lastPollData = null;
-        let idleCounter = 0;
 
         function stopPolling() {
             if (pollingInterval) clearInterval(pollingInterval);
@@ -3084,7 +3081,6 @@
                 statusText.textContent = 'CONNECTING';
 
                 try {
-                    // Ambil data terbaru device ini
                     const { data, error } = await supabase
                         .from('devices')
                         .select('*')
@@ -3099,7 +3095,6 @@
                     const now = new Date().toLocaleTimeString();
                     lastUpdateText.textContent = `Last update: ${now}`;
 
-                    // Update info map
                     if (data) {
                         deviceInfoMap.set(deviceId, {
                             status: data.status || 'online',
@@ -3115,49 +3110,17 @@
                         deviceSolenoidStatus.set(deviceId, data.solenoid_state || false);
                     }
 
-                    // Jika masih ada data di info map, update UI
                     if (currentDevice && deviceInfoMap.has(deviceId)) {
                         const info = deviceInfoMap.get(deviceId);
                         if (info.lastDataTime && (Date.now() - info.lastDataTime) > 30000) {
                             statusDot.className = 'dot warning';
                             statusText.textContent = '⚠️ DATA LOST';
                         }
-
-                        // Update UI
-                        if (info.lat && info.lng) {
-                            const coords = [info.lat, info.lng];
-                            if (!currentMarker) {
-                                currentMarker = L.marker(coords, { icon: vehicleIcon }).addTo(map);
-                                currentMarker.bindPopup(`<b>${currentDevice.name}</b><br>Speed: ${info.speed||0} km/h`);
-                            } else {
-                                currentMarker.setLatLng(coords);
-                            }
-                            map.setView(coords, 14);
-                            checkZoneStatus(info.lat, info.lng, deviceId);
-                        }
-
-                        document.getElementById('speedValue').textContent = `${info.speed||0} km/h`;
-                        document.getElementById('fuelConsumptionValue').textContent = `0 L`; // Tidak ada data konsumsi di devices
-                        document.getElementById('engineStatusValue').textContent = info.engine == 1 ? 'HIDUP' : 'MATI';
-
-                        if (info.fuel !== undefined) {
-                            const fuel = Math.min(100, Math.max(0, info.fuel));
-                            document.getElementById('fuelLevel').textContent = `${fuel.toFixed(1)}%`;
-                            document.getElementById('fuelProgressFill').style.width = `${fuel}%`;
-                            const cls = fuel < 20 ? 'low' : (fuel < 50 ? 'medium' : 'high');
-                            document.getElementById('fuelProgressFill').className = 'fuel-progress-fill ' + cls;
-                        }
-
-                        const isOn = info.solenoid || false;
-                        const el = document.getElementById('solenoidStatus');
-                        el.textContent = isOn ? 'SOL: ON' : 'SOL: OFF';
-                        el.className = 'card-value ' + (isKillSwitchMode ? (isOn ? 'red' : 'green') : (isOn ? 'green' : 'red'));
-
+                        updateTelemetryUI(info);
+                        updateMarkerPosition(info);
                         checkSpeeding(info.speed || 0);
-                        // Fuel drop tidak bisa di-deteksi dari devices saja
                     }
 
-                    idleCounter = 0;
                     const interval = 3000;
                     pollingTimeout = setTimeout(doPoll, interval);
 
@@ -3171,10 +3134,44 @@
             doPoll();
         }
 
+        // Fungsi pembantu untuk update UI telemetri
+        function updateTelemetryUI(info) {
+            document.getElementById('speedValue').textContent = `${info.speed||0} km/h`;
+            document.getElementById('fuelConsumptionValue').textContent = `0 L`;
+            document.getElementById('engineStatusValue').textContent = info.engine == 1 ? 'HIDUP' : 'MATI';
+
+            if (info.fuel !== undefined) {
+                const fuel = Math.min(100, Math.max(0, info.fuel));
+                document.getElementById('fuelLevel').textContent = `${fuel.toFixed(1)}%`;
+                document.getElementById('fuelProgressFill').style.width = `${fuel}%`;
+                const cls = fuel < 20 ? 'low' : (fuel < 50 ? 'medium' : 'high');
+                document.getElementById('fuelProgressFill').className = 'fuel-progress-fill ' + cls;
+            }
+
+            const isOn = info.solenoid || false;
+            const el = document.getElementById('solenoidStatus');
+            el.textContent = isOn ? 'SOL: ON' : 'SOL: OFF';
+            el.className = 'card-value ' + (isKillSwitchMode ? (isOn ? 'red' : 'green') : (isOn ? 'green' : 'red'));
+        }
+
+        function updateMarkerPosition(info) {
+            if (info.lat && info.lng) {
+                const coords = [info.lat, info.lng];
+                if (!currentMarker) {
+                    currentMarker = L.marker(coords, { icon: vehicleIcon }).addTo(map);
+                    currentMarker.bindPopup(`<b>${currentDevice.name}</b><br>Speed: ${info.speed||0} km/h`);
+                } else {
+                    currentMarker.setLatLng(coords);
+                }
+                map.setView(coords, 14);
+                checkZoneStatus(info.lat, info.lng, currentDevice.id);
+            }
+        }
+
         // ================================================================
         //  SELECT DEVICE
         // ================================================================
-        async function selectDevice(deviceId) {
+        function selectDevice(deviceId) {
             if (currentMarker) map.removeLayer(currentMarker);
             currentMarker = null;
             currentDevice = devicesData.find(d => d.id == deviceId);
@@ -3184,8 +3181,7 @@
             const info = deviceInfoMap.get(deviceId);
             if (info && info.lat && info.lng) {
                 const coords = [info.lat, info.lng];
-                if (!currentMarker) currentMarker = L.marker(coords, { icon: vehicleIcon }).addTo(map);
-                else currentMarker.setLatLng(coords);
+                currentMarker = L.marker(coords, { icon: vehicleIcon }).addTo(map);
                 currentMarker.bindPopup(`<b>${currentDevice.name}</b>`).openPopup();
                 map.flyTo(coords, 14, { duration: 1.5 });
                 checkZoneStatus(info.lat, info.lng, deviceId);
@@ -3209,7 +3205,7 @@
             );
             if (filtered.length === 0) {
                 container.innerHTML =
-                '<div style="text-align:center;padding:12px;font-size:0.75rem;">Tidak ada perangkat</div>';
+                    '<div style="text-align:center;padding:12px;font-size:0.75rem;">Tidak ada perangkat</div>';
                 return;
             }
             let html = '';
@@ -3426,7 +3422,7 @@
 
                 if (!data || data.length === 0) {
                     container.innerHTML =
-                    '<div style="text-align:center;padding:8px;font-size:0.7rem;">Belum ada geofence</div>';
+                        '<div style="text-align:center;padding:8px;font-size:0.7rem;">Belum ada geofence</div>';
                     return;
                 }
                 let html = '';
@@ -3443,7 +3439,6 @@
         }
 
         function zoomToGeofence(id) {
-            // Cari di geofencePolygons berdasarkan geoId
             const poly = geofencePolygons.find(p => p.options.geoId == id);
             if (poly) {
                 const bounds = poly.getBounds();
@@ -3512,7 +3507,7 @@
             }
         }
 
-        // syncGeofencesToServer sudah digabung dengan saveAllGeofencesToStorage
+        // syncGeofencesToServer sekarang memanggil saveAllGeofencesToStorage
         async function syncGeofencesToServer() {
             await saveAllGeofencesToStorage();
         }
@@ -3544,7 +3539,7 @@
         }
 
         // ================================================================
-        //  ESP32 CODE MODAL (dengan API_BASE yang sudah tidak dipakai lagi)
+        //  ESP32 CODE MODAL
         // ================================================================
         function showESP32Code() {
             const code = `// ESP32 - GPS, Flow Meter, Current Sensor, Solenoid Control
@@ -3754,6 +3749,145 @@
         }
 
         // ================================================================
+        //  SPEED LIMIT & KILL SWITCH
+        // ================================================================
+        function updateSpeedLimit(val) {
+            speedLimit = Number(val);
+            localStorage.setItem('fleet_speed_limit', val);
+        }
+
+        function toggleKillSwitch() {
+            const toggle = document.getElementById('killSwitchToggle');
+            isKillSwitchMode = !isKillSwitchMode;
+            toggle.classList.toggle('active');
+            localStorage.setItem('fleet_kill_switch_mode', isKillSwitchMode);
+            renderDeviceList();
+            showAlert(isKillSwitchMode ? '🔴 Mode Kill Switch AKTIF' : '🟢 Mode Kill Switch NONAKTIF', 'success');
+        }
+
+        // ================================================================
+        //  SETTINGS: THEME
+        // ================================================================
+        function toggleTheme() {
+            const body = document.body;
+            const isDark = body.classList.toggle('light-theme');
+            localStorage.setItem('fleet_theme', isDark ? 'light' : 'dark');
+            showAlert(isDark ? '🌞 Tema terang diaktifkan' : '🌙 Tema gelap diaktifkan', 'success');
+        }
+
+        // ================================================================
+        //  BOTTOM PANEL SWIPE
+        // ================================================================
+        function initBottomPanelSwipe() {
+            const panel = document.getElementById('bottomPanel');
+            if (!panel) return;
+            let startY = 0,
+                currentY = 0,
+                isDragging = false,
+                isMinimized = false;
+
+            panel.addEventListener('touchstart', (e) => {
+                const touch = e.touches[0];
+                startY = touch.clientY;
+                currentY = startY;
+                isDragging = true;
+                panel.style.transition = 'none';
+            }, { passive: true });
+
+            panel.addEventListener('touchmove', (e) => {
+                if (!isDragging) return;
+                const touch = e.touches[0];
+                currentY = touch.clientY;
+                const delta = currentY - startY;
+                const rect = panel.getBoundingClientRect();
+                const touchY = touch.clientY - rect.top;
+                if (touchY > 60 && !isMinimized) { isDragging = false; return; }
+                e.preventDefault();
+                if (delta > 0) {
+                    const progress = Math.min(delta / 200, 1);
+                    panel.style.transform = `translateY(${progress * (panel.scrollHeight - 48)}px)`;
+                    panel.style.maxHeight = `${180 - progress * 132}px`;
+                } else if (delta < 0 && isMinimized) {
+                    const progress = Math.min(Math.abs(delta) / 200, 1);
+                    panel.style.transform = `translateY(${(1 - progress) * (panel.scrollHeight - 48)}px)`;
+                    panel.style.maxHeight = `${48 + progress * 132}px`;
+                }
+            }, { passive: false });
+
+            panel.addEventListener('touchend', () => {
+                if (!isDragging) return;
+                isDragging = false;
+                panel.style.transition =
+                    'transform 0.4s cubic-bezier(0.25,0.46,0.45,0.94), max-height 0.4s cubic-bezier(0.25,0.46,0.45,0.94)';
+                const delta = currentY - startY;
+                if (delta > 80) { panel.classList.add('minimized');
+                    isMinimized = true; } else if (delta < -80 && isMinimized) { panel.classList.remove('minimized');
+                    isMinimized = false; }
+                panel.style.transform = '';
+                panel.style.maxHeight = '';
+            }, { passive: true });
+
+            panel.addEventListener('click', (e) => {
+                if (panel.classList.contains('minimized') && !e.target.closest('button') && !e.target.closest(
+                        '.toggle-switch')) {
+                    panel.classList.remove('minimized');
+                    isMinimized = false;
+                }
+            });
+
+            // Mouse support
+            let mouseStartY = 0,
+                mouseCurrentY = 0,
+                isMouseDragging = false;
+            panel.addEventListener('mousedown', (e) => {
+                const rect = panel.getBoundingClientRect();
+                if (e.clientY - rect.top > 60 && !isMinimized) return;
+                if (e.target.closest('button') || e.target.closest('.toggle-switch')) return;
+                mouseStartY = e.clientY;
+                mouseCurrentY = mouseStartY;
+                isMouseDragging = true;
+                panel.style.transition = 'none';
+                e.preventDefault();
+            });
+            document.addEventListener('mousemove', (e) => {
+                if (!isMouseDragging) return;
+                mouseCurrentY = e.clientY;
+                const delta = mouseCurrentY - mouseStartY;
+                if (delta > 0) {
+                    const progress = Math.min(delta / 200, 1);
+                    panel.style.transform = `translateY(${progress * (panel.scrollHeight - 48)}px)`;
+                    panel.style.maxHeight = `${180 - progress * 132}px`;
+                } else if (delta < 0 && isMinimized) {
+                    const progress = Math.min(Math.abs(delta) / 200, 1);
+                    panel.style.transform = `translateY(${(1 - progress) * (panel.scrollHeight - 48)}px)`;
+                    panel.style.maxHeight = `${48 + progress * 132}px`;
+                }
+            });
+            document.addEventListener('mouseup', () => {
+                if (!isMouseDragging) return;
+                isMouseDragging = false;
+                panel.style.transition =
+                    'transform 0.4s cubic-bezier(0.25,0.46,0.45,0.94), max-height 0.4s cubic-bezier(0.25,0.46,0.45,0.94)';
+                const delta = mouseCurrentY - mouseStartY;
+                if (delta > 80) { panel.classList.add('minimized');
+                    isMinimized = true; } else if (delta < -80 && isMinimized) { panel.classList.remove('minimized');
+                    isMinimized = false; }
+                panel.style.transform = '';
+                panel.style.maxHeight = '';
+            });
+        }
+
+        // ================================================================
+        //  ALERTS: SPEEDING
+        // ================================================================
+        function checkSpeeding(speed) {
+            if (speed > speedLimit) {
+                showAlert(`⚠️ ${t('speeding_alert')} (${speed} km/h)`);
+                playBeep(1000, 200);
+            }
+        }
+
+        // ================================================================
         //  INIT MAP & GEOFENCE DRAW
         // ================================================================
         let map, currentTileLayer;
@@ -3836,7 +3970,7 @@
                         const angle = (i / 36) * 2 * Math.PI;
                         const lat = center.lat + (radius / 111000) * Math.cos(angle);
                         const lng = center.lng + (radius / (111000 * Math.cos(center.lat * Math.PI / 180))) * Math.sin(
-                        angle);
+                            angle);
                         coords.push([lat, lng]);
                     }
                     const name = prompt('Nama zona:', 'Lingkaran ' + (geofencePolygons.length + 1));
@@ -3878,137 +4012,11 @@
         }
 
         // ================================================================
-        //  SETTINGS: THEME
-        // ================================================================
-        function toggleTheme() {
-            const body = document.body;
-            const isDark = body.classList.toggle('light-theme');
-            localStorage.setItem('fleet_theme', isDark ? 'light' : 'dark');
-            showAlert(isDark ? '🌞 Tema terang diaktifkan' : '🌙 Tema gelap diaktifkan', 'success');
-        }
-
-        // ================================================================
-        //  BOTTOM PANEL SWIPE
-        // ================================================================
-        function initBottomPanelSwipe() {
-            const panel = document.getElementById('bottomPanel');
-            if (!panel) return;
-            let startY = 0,
-                currentY = 0,
-                isDragging = false,
-                isMinimized = false;
-
-            panel.addEventListener('touchstart', (e) => {
-                const touch = e.touches[0];
-                startY = touch.clientY;
-                currentY = startY;
-                isDragging = true;
-                panel.style.transition = 'none';
-            }, { passive: true });
-
-            panel.addEventListener('touchmove', (e) => {
-                if (!isDragging) return;
-                const touch = e.touches[0];
-                currentY = touch.clientY;
-                const delta = currentY - startY;
-                const rect = panel.getBoundingClientRect();
-                const touchY = touch.clientY - rect.top;
-                if (touchY > 60 && !isMinimized) { isDragging = false; return; }
-                e.preventDefault();
-                if (delta > 0) {
-                    const progress = Math.min(delta / 200, 1);
-                    panel.style.transform = `translateY(${progress * (panel.scrollHeight - 48)}px)`;
-                    panel.style.maxHeight = `${180 - progress * 132}px`;
-                } else if (delta < 0 && isMinimized) {
-                    const progress = Math.min(Math.abs(delta) / 200, 1);
-                    panel.style.transform = `translateY(${(1 - progress) * (panel.scrollHeight - 48)}px)`;
-                    panel.style.maxHeight = `${48 + progress * 132}px`;
-                }
-            }, { passive: false });
-
-            panel.addEventListener('touchend', () => {
-                if (!isDragging) return;
-                isDragging = false;
-                panel.style.transition =
-                'transform 0.4s cubic-bezier(0.25,0.46,0.45,0.94), max-height 0.4s cubic-bezier(0.25,0.46,0.45,0.94)';
-                const delta = currentY - startY;
-                if (delta > 80) { panel.classList.add('minimized');
-                    isMinimized = true; } else if (delta < -80 && isMinimized) { panel.classList.remove('minimized');
-                    isMinimized = false; }
-                panel.style.transform = '';
-                panel.style.maxHeight = '';
-            }, { passive: true });
-
-            panel.addEventListener('click', (e) => {
-                if (panel.classList.contains('minimized') && !e.target.closest('button') && !e.target.closest(
-                        '.toggle-switch')) {
-                    panel.classList.remove('minimized');
-                    isMinimized = false;
-                }
-            });
-
-            // Mouse support
-            let mouseStartY = 0,
-                mouseCurrentY = 0,
-                isMouseDragging = false;
-            panel.addEventListener('mousedown', (e) => {
-                const rect = panel.getBoundingClientRect();
-                if (e.clientY - rect.top > 60 && !isMinimized) return;
-                if (e.target.closest('button') || e.target.closest('.toggle-switch')) return;
-                mouseStartY = e.clientY;
-                mouseCurrentY = mouseStartY;
-                isMouseDragging = true;
-                panel.style.transition = 'none';
-                e.preventDefault();
-            });
-            document.addEventListener('mousemove', (e) => {
-                if (!isMouseDragging) return;
-                mouseCurrentY = e.clientY;
-                const delta = mouseCurrentY - mouseStartY;
-                if (delta > 0) {
-                    const progress = Math.min(delta / 200, 1);
-                    panel.style.transform = `translateY(${progress * (panel.scrollHeight - 48)}px)`;
-                    panel.style.maxHeight = `${180 - progress * 132}px`;
-                } else if (delta < 0 && isMinimized) {
-                    const progress = Math.min(Math.abs(delta) / 200, 1);
-                    panel.style.transform = `translateY(${(1 - progress) * (panel.scrollHeight - 48)}px)`;
-                    panel.style.maxHeight = `${48 + progress * 132}px`;
-                }
-            });
-            document.addEventListener('mouseup', () => {
-                if (!isMouseDragging) return;
-                isMouseDragging = false;
-                panel.style.transition =
-                'transform 0.4s cubic-bezier(0.25,0.46,0.45,0.94), max-height 0.4s cubic-bezier(0.25,0.46,0.45,0.94)';
-                const delta = mouseCurrentY - mouseStartY;
-                if (delta > 80) { panel.classList.add('minimized');
-                    isMinimized = true; } else if (delta < -80 && isMinimized) { panel.classList.remove('minimized');
-                    isMinimized = false; }
-                panel.style.transform = '';
-                panel.style.maxHeight = '';
-            });
-        }
-
-        // ================================================================
-        //  ALERTS: SPEEDING & FUEL (masih dipertahankan)
-        // ================================================================
-        let lastFuelLevel = 100,
-            lastFuelCheckTime = 0;
-
-        function checkSpeeding(speed) {
-            if (speed > speedLimit) { showAlert(`⚠️ ${t('speeding_alert')} (${speed} km/h)`);
-                playBeep(1000, 200); }
-        }
-
-        function checkFuelDrop(fuel) {
-            // Tidak digunakan lagi karena tidak ada data fuel dari devices
-        }
-
-        // ================================================================
         //  INIT
         // ================================================================
         async function init() {
             try {
+                // Muat preferensi
                 const savedLang = localStorage.getItem('fleet_language') || 'id';
                 document.getElementById('langSelect').value = savedLang;
                 changeLanguage(savedLang);
@@ -4032,16 +4040,16 @@
                 initLocationButton();
                 initBottomPanelSwipe();
 
+                // Generate MAC otomatis
                 document.getElementById('newDeviceId').value = generateRandomMAC();
                 document.getElementById('generateMacBtn').addEventListener('click', fillRandomMAC);
 
+                // Event listeners untuk tambah perangkat
                 document.getElementById('newDeviceName').addEventListener('keydown', (e) => {
                     if (e.key === 'Enter') {
                         e.preventDefault();
                         const macInput = document.getElementById('newDeviceId');
-                        if (!macInput.value.trim()) {
-                            macInput.value = generateRandomMAC();
-                        }
+                        if (!macInput.value.trim()) macInput.value = generateRandomMAC();
                         addESP32Device();
                     }
                 });
@@ -4059,10 +4067,45 @@
                 const theme = localStorage.getItem('fleet_theme');
                 if (theme === 'light') document.body.classList.add('light-theme');
 
+                // ================================================================
+                //  INTEGRASI MQTT (HiveMQ) — Siap Aktifkan
+                //  Jika ingin mengganti polling dengan MQTT, aktifkan blok di bawah
+                // ================================================================
+                /*
+                if (HIVEMQ_URL && HIVEMQ_USER && HIVEMQ_PASS) {
+                    const mqtt = window.mqtt;
+                    const client = mqtt.connect(HIVEMQ_URL, {
+                        username: HIVEMQ_USER,
+                        password: HIVEMQ_PASS
+                    });
+                    client.on('connect', () => {
+                        console.log('Connected to HiveMQ');
+                        client.subscribe(`devices/${currentUser.id}/#`);
+                    });
+                    client.on('message', (topic, message) => {
+                        const payload = JSON.parse(message.toString());
+                        const deviceId = payload.device_id;
+                        if (deviceId && deviceInfoMap.has(deviceId)) {
+                            const info = deviceInfoMap.get(deviceId);
+                            Object.assign(info, payload);
+                            deviceInfoMap.set(deviceId, info);
+                            if (currentDevice && currentDevice.id === deviceId) {
+                                updateTelemetryUI(info);
+                                updateMarkerPosition(info);
+                                checkSpeeding(info.speed || 0);
+                            }
+                        }
+                    });
+                    client.on('error', (err) => console.warn('MQTT error:', err));
+                    // Nonaktifkan polling jika MQTT aktif
+                    // stopPolling();
+                }
+                */
+
+                // Perbaikan ukuran map
                 setTimeout(() => { if (map) map.invalidateSize(); }, 600);
                 window.addEventListener('resize', () => setTimeout(() => { if (map) map.invalidateSize(); }, 300));
-                window.addEventListener('orientationchange', () => setTimeout(() => { if (map) map.invalidateSize(); },
-                500));
+                window.addEventListener('orientationchange', () => setTimeout(() => { if (map) map.invalidateSize(); }, 500));
 
                 document.addEventListener('keydown', (e) => {
                     if (e.key === 'Escape') { closeDeleteModal();
