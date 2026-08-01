@@ -409,12 +409,12 @@
         // Di Netlify, set SUPABASE_URL dan SUPABASE_ANON_KEY di Environment Variables
         const SUPABASE_URL = window.SUPABASE_URL || 'https://gapcqlcqowmhcpzbqygr.supabase.co';
         // ⚠️ PERHATIAN: Ganti dengan ANON KEY yang benar (bukan service_role key)
-        const SUPABASE_ANON_KEY = window.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdhcGNxbGNxb3dtaGNwemJxeWdyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MDAwMDAwMDAsImV4cCI6MjAwMDAwMDAwMH0.xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx';
+        const SUPABASE_ANON_KEY = window.SUPABASE_ANON_KEY || 'sb_secret_ruYKHGf-xjO-hGnGaM8JsA_fQ2c53TD';
 
         // ================================================================
         // 2. VALIDASI KEY (peringatan jika masih placeholder)
         // ================================================================
-        if (SUPABASE_ANON_KEY.includes('sb_secret') || SUPABASE_ANON_KEY === 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdhcGNxbGNxb3dtaGNwemJxeWdyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MDAwMDAwMDAsImV4cCI6MjAwMDAwMDAwMH0.xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx') {
+        if (SUPABASE_ANON_KEY.includes('sb_secret') || SUPABASE_ANON_KEY === 'sb_secret_ruYKHGf-xjO-hGnGaM8JsA_fQ2c53TD') {
             console.error('❌ SUPABASE_ANON_KEY masih menggunakan placeholder atau service_role key!');
             alert('⚠️ Konfigurasi Supabase salah!\n\n' +
                   'Ganti SUPABASE_ANON_KEY dengan "anon public" key dari dashboard.\n' +
