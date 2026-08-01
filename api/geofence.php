@@ -1,149 +1,107 @@
 <?php
-// api/geofences.php
+// api/geofence.php - Router untuk operasi geofence
 require_once 'config.php';
-
-// Tangani preflight OPTIONS request (jika config.php belum menangani)
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(200);
-    exit(0);
-}
 
 $method = $_SERVER['REQUEST_METHOD'];
 
 // ============================================================
-// 1. GET — Ambil daftar geofence
+// GET — Ambil daftar geofence
 // ============================================================
 if ($method === 'GET') {
+    $user_id = isset($_GET['user_id']) ? $_GET['user_id'] : null;
     $device_id = isset($_GET['device_id']) ? trim($_GET['device_id']) : null;
-    $user_id = isset($_GET['user_id']) ? (int) $_GET['user_id'] : 0;
 
-    $sql = "SELECT * FROM geofences WHERE 1=1";
-    $params = [];
-
-    if (!empty($device_id)) {
-        $sql .= " AND (device_id = ? OR device_id IS NULL)";
-        $params[] = $device_id;
+    if (!$user_id) {
+        sendJson(['error' => 'user_id required'], 400);
     }
 
-    // Jika ada user_id, filter berdasarkan kepemilikan
-    if ($user_id > 0) {
-        $sql .= " AND user_id = ?";
-        $params[] = $user_id;
+    $filters = ["user_id=eq.$user_id"];
+    if ($device_id !== null && $device_id !== '') {
+        $filters[] = "device_id=eq.$device_id";
     }
 
-    $sql .= " ORDER BY id DESC";
+    $endpoint = "geofences?" . implode('&', $filters) . "&order=name.asc";
+    $result = supabaseRequest('GET', $endpoint);
 
-    $stmt = $pdo->prepare($sql);
-    $stmt->execute($params);
-    $geofences = $stmt->fetchAll();
-
-    // Decode coordinates JSON
-    foreach ($geofences as &$g) {
-        $g['coordinates'] = json_decode($g['coordinates'], true);
-        if (!is_array($g['coordinates'])) {
-            $g['coordinates'] = []; // fallback jika JSON invalid
-        }
+    if ($result['status'] >= 200 && $result['status'] < 300) {
+        sendJson($result['body']);
+    } else {
+        sendJson(['error' => 'Gagal mengambil geofence', 'detail' => $result['body']], $result['status']);
     }
-
-    sendJson($geofences);
 }
 
 // ============================================================
-// 2. POST — Simpan geofence baru
+// POST — Simpan geofence baru
 // ============================================================
 if ($method === 'POST') {
     $input = getInput();
 
-    $device_id = isset($input['device_id']) ? trim($input['device_id']) : null;
-    $user_id = isset($input['user_id']) ? (int) $input['user_id'] : 0;
-    $name = isset($input['name']) ? trim($input['name']) : '';
+    $user_id = $input['user_id'] ?? null;
+    $device_id = $input['device_id'] ?? null;
+    $name = trim($input['name'] ?? '');
     $coordinates = $input['coordinates'] ?? [];
-    $type = isset($input['type']) ? trim($input['type']) : 'polygon';
-    $center_lat = isset($input['center_lat']) ? (float) $input['center_lat'] : null;
-    $center_lng = isset($input['center_lng']) ? (float) $input['center_lng'] : null;
-    $radius = isset($input['radius_meters']) ? (float) $input['radius_meters'] : null;
+    $type = $input['type'] ?? 'polygon';
 
     // Validasi
     if (empty($name)) {
         sendJson(['error' => 'Nama geofence harus diisi'], 400);
     }
-
-    if ($user_id === 0) {
-        sendJson(['error' => 'user_id diperlukan untuk menyimpan geofence'], 400);
+    if (!$user_id) {
+        sendJson(['error' => 'user_id diperlukan'], 400);
     }
-
-    if ($type === 'polygon' && (empty($coordinates) || count($coordinates) < 3)) {
+    if ($type === 'polygon' && (!is_array($coordinates) || count($coordinates) < 3)) {
         sendJson(['error' => 'Polygon membutuhkan minimal 3 titik koordinat'], 400);
     }
 
-    if ($type === 'circle' && ($center_lat === null || $center_lng === null || $radius === null || $radius <= 0)) {
-        sendJson(['error' => 'Lingkaran membutuhkan center_lat, center_lng, dan radius_meters > 0'], 400);
+    $payload = [
+        'user_id' => $user_id,
+        'name' => $name,
+        'coordinates' => $coordinates,
+        'type' => $type
+    ];
+    if ($device_id) $payload['device_id'] = $device_id;
+
+    // Simpan
+    $result = supabaseRequest('POST', 'geofences', $payload);
+
+    if ($result['status'] >= 200 && $result['status'] < 300) {
+        sendJson([
+            'status' => 'saved',
+            'id' => $result['body'][0]['id'] ?? null,
+            'data' => $result['body']
+        ]);
+    } else {
+        sendJson(['error' => 'Gagal menyimpan geofence', 'detail' => $result['body']], $result['status']);
     }
-
-    // Jika polygon, koordinat harus array of {lat, lng}
-    if ($type === 'polygon' && !is_array($coordinates)) {
-        sendJson(['error' => 'Koordinat harus berupa array'], 400);
-    }
-
-    // Encode coordinates ke JSON
-    $coordJson = json_encode($coordinates);
-    if ($coordJson === false) {
-        sendJson(['error' => 'Gagal encode coordinates'], 400);
-    }
-
-    $stmt = $pdo->prepare("
-        INSERT INTO geofences 
-        (user_id, device_id, name, coordinates, type, center_lat, center_lng, radius_meters)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    ");
-
-    $stmt->execute([
-        $user_id,
-        $device_id,
-        $name,
-        $coordJson,
-        $type,
-        $center_lat,
-        $center_lng,
-        $radius
-    ]);
-
-    sendJson([
-        'status' => 'saved',
-        'id' => $pdo->lastInsertId()
-    ]);
 }
 
 // ============================================================
-// 3. DELETE — Hapus geofence
+// DELETE — Hapus geofence
 // ============================================================
 if ($method === 'DELETE') {
-    // Cek apakah id dikirim via query string atau body
     $input = getInput();
-    $id = isset($_GET['id']) ? (int) $_GET['id'] : (isset($input['id']) ? (int) $input['id'] : 0);
-    $user_id = isset($input['user_id']) ? (int) $input['user_id'] : 0;
+    $id = $input['id'] ?? null;
+    $user_id = $input['user_id'] ?? null;
 
-    if ($id === 0) {
+    if (!$id) {
         sendJson(['error' => 'id geofence diperlukan'], 400);
     }
-
-    if ($user_id === 0) {
-        sendJson(['error' => 'user_id diperlukan untuk menghapus geofence'], 401);
+    if (!$user_id) {
+        sendJson(['error' => 'user_id diperlukan'], 401);
     }
 
-    // Hapus hanya jika geofence milik user tersebut
-    $stmt = $pdo->prepare("DELETE FROM geofences WHERE id = ? AND user_id = ?");
-    $stmt->execute([$id, $user_id]);
+    $endpoint = "geofences?id=eq.$id&user_id=eq.$user_id";
+    $result = supabaseRequest('DELETE', $endpoint);
 
-    if ($stmt->rowCount() > 0) {
+    if ($result['status'] >= 200 && $result['status'] < 300) {
         sendJson(['status' => 'deleted']);
     } else {
-        sendJson(['error' => 'Geofence tidak ditemukan atau bukan milik Anda'], 404);
+        sendJson(['error' => 'Gagal menghapus geofence', 'detail' => $result['body']], $result['status']);
     }
 }
 
 // ============================================================
-// 4. Method tidak dikenal
+// Method tidak dikenali
 // ============================================================
 sendJson(['error' => 'Method not allowed'], 405);
 ?>
