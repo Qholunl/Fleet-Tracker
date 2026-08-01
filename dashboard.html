@@ -2562,9 +2562,13 @@
         //  KONFIGURASI SUPABASE (dari Environment Variables Netlify)
         // ================================================================
         // Di Netlify, set SUPABASE_URL dan SUPABASE_ANON_KEY di Environment Variables
-        const SUPABASE_URL = window.SUPABASE_URL || 'https://gapcqlcqowmhcpzbqygr.supabase.co';
-        const SUPABASE_ANON_KEY = window.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdhcGNxbGNxb3dtaGNwemJxeWdyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUxNjc4NTcsImV4cCI6MjEwMDc0Mzg1N30.UnMBcPNcvzXj9v_JgsJktQ5iYmdXXDJnOYuJX1ZcWXQ';
+        // ================================================================
+        //  KONFIGURASI SUPABASE
+        // ================================================================
+        const SUPABASE_URL = 'https://gapcqlcqowmhcpzbqygr.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdhcGNxbGNxb3dtaGNwemJxeWdyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUxNjc4NTcsImV4cCI6MjEwMDc0Mzg1N30.UnMBcPNcvzXj9v_JgsJktQ5iYmdXXDJnOYuJX1ZcWXQ';
 
+        // HANYA SATU deklarasi (hapus yang lain)
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         // ================================================================
